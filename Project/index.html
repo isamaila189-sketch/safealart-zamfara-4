@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeAlert – Zamfara State Community Safety Portal</title>
+  
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  
+  <!-- Custom Tailwind Font Mapping -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- ==========================================
+      1. BILINGUAL NAVIGATION HEADER
+      ========================================== -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        
+        <!-- Logo Brand -->
+        <a href="#" class="flex items-center gap-2.5 transition active:scale-95">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-200">
+            <!-- Shield SVG Icon -->
+            <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-lg font-extrabold tracking-tight text-slate-900 leading-none">SafeAlert</span>
+            <span id="header-tagline" class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5" data-key="tagline">Zamfara State Community Safety Portal</span>
+          </div>
+        </a>
+
+        <!-- Desktop Navigation -->
+        <nav class="hidden md:flex items-center gap-6">
+          <a href="#directory" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navContacts">Emergency Contacts</a>
+          <a href="#map-section" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navMap">Interactive Map</a>
+          <a href="#report" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navReport">Report Incident</a>
+          <a href="#tips" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navTips">Safety Tips</a>
+          <a href="#about" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navAbout">About & Objectives</a>
+        </nav>
+
+        <!-- Right: Language Selector & CTA -->
+        <div class="flex items-center gap-3">
+          
+          <!-- Language Selector Button -->
+          <button id="lang-toggle-btn" onclick="toggleLanguage()" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition active:scale-95 cursor-pointer">
+            <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253" />
+            </svg>
+            <span id="lang-label">Hausa</span>
+          </button>
+
+          <!-- Quick Report CTA -->
+          <a href="#report" class="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm shadow-red-200 hover:bg-red-700 transition active:scale-95" data-key="navReport">
+            Report Incident
+          </a>
+
+          <!-- Mobile Menu Toggle Button -->
+          <button id="mobile-menu-btn" onclick="toggleMobileMenu()" class="md:hidden flex items-center justify-center p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-slate-100 shadow-inner">
+      <div class="px-4 pt-2 pb-4 space-y-1">
+        <a href="#directory" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navContacts">Emergency Contacts</a>
+        <a href="#map-section" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navMap">Interactive Map</a>
+        <a href="#report" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navReport">Report Incident</a>
+        <a href="#tips" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navTips">Safety Tips</a>
+        <a href="#about" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navAbout">About & Objectives</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+      2. HERO SECTION WITH LIVE GUSAU CLOCK
+      ========================================== -->
+  <section class="relative overflow-hidden bg-slate-900 text-white py-24 border-b border-slate-800">
+    <!-- Overlay Radial Accents -->
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]"></div>
+    <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-950/20 to-transparent"></div>
+
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid gap-12 lg:grid-cols-12 items-center">
+        
+        <!-- Hero Information Block -->
+        <div class="lg:col-span-7 text-left space-y-6">
+          
+          <!-- Academic SIWES Tag & Live Clock -->
+          <div class="inline-flex items-center gap-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 text-xs font-bold text-emerald-400">
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+            </span>
+            <span data-key="footSiwes">ZITDA SIWES Training Programme</span>
+            <span class="text-slate-600">|</span>
+            <span id="live-time" class="font-mono text-[11px] text-emerald-300">GUSAU WAT: --:--:--</span>
+          </div>
+
+          <h1 id="hero-title" class="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl text-white leading-[1.1]" data-key="heroTitle">
+            Emergency Coordination & Community Protection
+          </h1>
+          <p id="hero-subtitle" class="text-lg text-slate-300 leading-relaxed max-w-2xl" data-key="heroSubtitle">
+            A unified safety portal connecting the citizens of Zamfara State with verified security, medical, and disaster relief agencies. Empowering local response and supporting United Nations SDG 16.
+          </p>
+
+          <div class="flex flex-wrap gap-4 pt-2">
+            <a href="#report" class="rounded-xl bg-red-600 hover:bg-red-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-900/30 transition hover:-translate-y-0.5 active:scale-95 flex items-center gap-2" data-key="heroBtnReport">
+              Report Secure Incident
+              <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12.75 15l3-3m0 0l-3-3m3 3h-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </a>
+            <a href="#directory" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3.5 text-sm font-bold text-slate-200 transition hover:-translate-y-0.5 active:scale-95 flex items-center gap-2" data-key="heroBtnContacts">
+              Emergency Directory
+              <svg class="h-4.5 w-4.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+            </a>
+          </div>
+
+          <div class="pt-4 flex items-start gap-2.5 max-w-xl text-xs text-slate-400">
+            <svg class="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p id="hero-emergency-notice" data-key="heroEmergencyNotice">In immediate life-threatening situations, please dial 112 or contact the respective agency directly.</p>
+          </div>
+        </div>
+
+        <!-- Hero Feature Card -->
+        <div class="lg:col-span-5 relative">
+          <div class="absolute inset-0 bg-emerald-500 rounded-3xl opacity-10 blur-xl"></div>
+          <div class="relative bg-slate-950/40 border border-slate-800 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span>
+                <span class="text-xs font-bold text-slate-300 font-mono tracking-wider">SECURE LINK STATUS</span>
+              </div>
+              <span class="text-[10px] font-bold text-emerald-400 font-mono">100% ONLINE</span>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Zamfara Hub</span>
+                <span class="text-xl font-extrabold text-slate-100 block mt-1">11 Command HQs</span>
+              </div>
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Coverage Area</span>
+                <span class="text-xl font-extrabold text-slate-100 block mt-1">14 Local Govts</span>
+              </div>
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Universal Code</span>
+                <span class="text-xl font-extrabold text-slate-100 block mt-1 font-mono">Dial 112 / 122</span>
+              </div>
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Active Patrols</span>
+                <span class="text-xl font-extrabold text-emerald-400 block mt-1">Verified Live</span>
+              </div>
+            </div>
+
+            <!-- ZITDA SIWES Banner -->
+            <div class="mt-4 p-3 bg-emerald-950/20 rounded-xl border border-emerald-900/40 text-[11px] text-emerald-300 leading-relaxed flex gap-2">
+              <svg class="h-4.5 w-4.5 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>SIWES Capstone Endorsement: Designed in collaboration with <strong>Zamfara Information Technology Development Agency (ZITDA)</strong>.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+      3. EMERGENCY CONTACTS DIRECTORY (GRID & FILTERS)
+      ========================================== -->
+  <section id="directory" class="py-20 bg-white scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 id="contacts-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl" data-key="contactsTitle">
+          Verified Emergency Directory
+        </h2>
+        <p id="contacts-subtitle" class="mt-4 text-lg text-slate-600" data-key="contactsSubtitle">
+          Direct communication channels to all major official emergency response agencies operating in Zamfara State.
+        </p>
+      </div>
+
+      <!-- Live Search & Interactive Category Filter Tabs -->
+      <div class="mb-8 space-y-4">
+        <div class="grid gap-4 md:grid-cols-12 items-center">
+          
+          <!-- Search Box -->
+          <div class="md:col-span-6 relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input 
+              type="text" 
+              id="search-input"
+              oninput="handleSearch()"
+              placeholder="Search agencies by name, category, website, phone..." 
+              class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400 shadow-sm"
+              data-placeholder="searchPlaceholder"
+            />
+          </div>
+
+          <!-- Category Filter Tabs -->
+          <div class="md:col-span-6 flex flex-wrap gap-2 justify-start md:justify-end">
+            <button onclick="filterCategory('All')" id="tab-All" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-md shadow-emerald-100 cursor-pointer" data-key="categoryAll">All Services</button>
+            <button onclick="filterCategory('Security')" id="tab-Security" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer" data-key="categorySecurity">Security & Defence</button>
+            <button onclick="filterCategory('Disaster')" id="tab-Disaster" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer" data-key="categoryDisaster">Disaster & Fire</button>
+            <button onclick="filterCategory('Medical')" id="tab-Medical" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer" data-key="categoryMedical">Medical & Health</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Agencies Grid Container -->
+      <div id="agencies-grid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <!-- Rendered Dynamically by JavaScript -->
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      4. INTERACTIVE EMERGENCY OPERATIONS MAP (LEAFLET)
+      ========================================== -->
+  <section id="map-section" class="py-20 bg-slate-100 border-y border-slate-200 scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-12">
+        <h2 id="map-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl flex items-center justify-center gap-3" data-key="mapTitle">
+          <svg class="h-8 w-8 text-emerald-500 shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Interactive Emergency Operations Map (Gusau)
+        </h2>
+        <p id="map-subtitle" class="mt-4 text-lg text-slate-600" data-key="mapSubtitle">
+          Approximate geographic locations of the 11 verified command and emergency response headquarters in Gusau.
+        </p>
+      </div>
+
+      <div class="grid gap-8 lg:grid-cols-12">
+        
+        <!-- Sidebar Command Selector Dashboard -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider" id="sidebar-header">Command Headquarters</h3>
+              <button onclick="recenterMap()" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition-all flex items-center gap-1 cursor-pointer" id="recenter-btn" data-key="mapRecenter">
+                Recenter on Gusau
+              </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed" id="select-prompt" data-key="mapSelectPrompt">
+              Select any coordinate pin on the map to display official agency contact coordinates.
+            </p>
+
+            <!-- Dynamic map sidebar container -->
+            <div id="map-sidebar-list" class="space-y-2 max-h-[380px] overflow-y-auto pr-1 no-scrollbar">
+              <!-- Populated dynamically by script.js -->
+            </div>
+          </div>
+
+          <!-- Legend Card -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3" id="legend-header">Map Legend</h4>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2.5 text-xs text-slate-600">
+                <span class="w-3.5 h-3.5 rounded-full bg-blue-600 border border-white shadow-sm inline-block shrink-0"></span>
+                <span id="legend-security" data-key="mapCategorySecurity">Security Command Center</span>
+              </div>
+              <div class="flex items-center gap-2.5 text-xs text-slate-600">
+                <span class="w-3.5 h-3.5 rounded-full bg-orange-600 border border-white shadow-sm inline-block shrink-0"></span>
+                <span id="legend-disaster" data-key="mapCategoryDisaster">Disaster / Fire Response HQ</span>
+              </div>
+              <div class="flex items-center gap-2.5 text-xs text-slate-600">
+                <span class="w-3.5 h-3.5 rounded-full bg-teal-600 border border-white shadow-sm inline-block shrink-0"></span>
+                <span id="legend-medical" data-key="mapCategoryMedical">Medical Emergency Base</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaflet Map Canvas Grid -->
+        <div class="lg:col-span-8">
+          <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-md overflow-hidden relative">
+            <div id="leaflet-map" class="h-[480px] w-full rounded-2xl overflow-hidden relative z-10"></div>
+            
+            <!-- Real-time Status Overlay -->
+            <div class="absolute bottom-6 right-6 z-20 bg-slate-900/90 backdrop-blur-md text-white rounded-xl px-4 py-2 text-[11px] border border-slate-800 shadow-lg pointer-events-none flex items-center gap-2">
+              <span class="flex h-2 w-2 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span class="font-mono">SIWES Simulation: Active Map Feeds (Gusau Hub)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      5. SECURE INCIDENT REPORT FORM (WITH TICKET GENERATION)
+      ========================================== -->
+  <section id="report" class="py-20 bg-white border-y border-slate-200 scroll-mt-12">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <h2 id="form-title" class="text-3xl font-extrabold tracking-tight text-slate-900" data-key="formTitle">
+          Secure Incident Reporter
+        </h2>
+        <p id="form-subtitle" class="mt-4 text-base text-slate-600" data-key="formSubtitle">
+          Securely submit incident details to first responder coordinates. This system is structured for future CRM and emergency response dispatch integration.
+        </p>
+      </div>
+
+      <!-- Reporter Form Container -->
+      <div class="bg-slate-50 rounded-3xl border border-slate-200 p-8 shadow-sm">
+        <form id="incident-form" onsubmit="submitIncident(event)" class="space-y-6">
+          
+          <div class="grid gap-6 md:grid-cols-2">
+            <!-- Full Name -->
+            <div class="flex flex-col gap-1.5">
+              <label for="reporter-name" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-name" data-key="formName">Reporter's Full Name</label>
+              <input 
+                type="text" 
+                id="reporter-name" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+                placeholder="e.g. Aliyu Danjuma"
+              />
+              <span id="err-name" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+
+            <!-- Phone Number -->
+            <div class="flex flex-col gap-1.5">
+              <label for="reporter-phone" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-phone" data-key="formPhone">Active Phone Number</label>
+              <input 
+                type="tel" 
+                id="reporter-phone" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+                placeholder="e.g. 08031234567"
+              />
+              <span id="err-phone" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+          </div>
+
+          <div class="grid gap-6 md:grid-cols-2">
+            <!-- Classification -->
+            <div class="flex flex-col gap-1.5">
+              <label for="incident-type" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-type" data-key="formType">Incident Classification</label>
+              <select 
+                id="incident-type" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition bg-white"
+              >
+                <option value="" disabled selected id="type-placeholder" data-key="formTypePlaceholder">Select classification...</option>
+                <option value="Security">Security Breach / Unrest (Tsaro)</option>
+                <option value="Fire">Fire Hazard / Outbreak (Gobara)</option>
+                <option value="Flood">Environmental Disaster / Flood (Agaji)</option>
+                <option value="Medical">Severe Medical Emergency (Lafiya)</option>
+                <option value="Road Accident">Road Traffic Accident (Hatsari)</option>
+              </select>
+              <span id="err-type" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+
+            <!-- Location -->
+            <div class="flex flex-col gap-1.5">
+              <label for="incident-location" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-location" data-key="formLocation">Location / LGA in Zamfara State</label>
+              <input 
+                type="text" 
+                id="incident-location" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+                placeholder="e.g., Gusau, Kaura Namoda, Maru, Talata Mafara..."
+                data-placeholder="formLocationPlaceholder"
+              />
+              <span id="err-location" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+          </div>
+
+          <!-- Date & Time -->
+          <div class="flex flex-col gap-1.5">
+            <label for="incident-date" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-date" data-key="formDate">Incident Date & Time</label>
+            <input 
+              type="datetime-local" 
+              id="incident-date" 
+              class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition bg-white"
+            />
+            <span id="err-date" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+          </div>
+
+          <!-- Description -->
+          <div class="flex flex-col gap-1.5">
+            <label for="incident-desc" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-desc" data-key="formDesc">Detailed Description of Incident</label>
+            <textarea 
+              id="incident-desc" 
+              rows="4"
+              class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+              placeholder="Provide a clear description of what is happening, casualties (if any), and current hazards..."
+              data-placeholder="formDescPlaceholder"
+            ></textarea>
+            <span id="err-desc" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit" 
+            id="submit-btn"
+            class="w-full rounded-2xl bg-red-600 hover:bg-red-700 px-6 py-4 text-sm font-bold text-white shadow-md shadow-red-200 transition-all hover:shadow-lg active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            data-key="btnSubmitForm"
+          >
+            Transmit Emergency Report
+          </button>
+
+        </form>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      6. COMMUNITY SAFETY GUIDELINES
+      ========================================== -->
+  <section id="tips" class="py-20 bg-slate-50 scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 id="tips-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl" data-key="tipsTitle">
+          Community Safety Guidelines
+        </h2>
+        <p id="tips-subtitle" class="mt-4 text-lg text-slate-600" data-key="tipsSubtitle">
+          Vital protective guidelines and safety instructions for residents of Zamfara State to prevent accidents and manage crisis.
+        </p>
+      </div>
+
+      <!-- Guidelines Grid -->
+      <div class="grid gap-8 md:grid-cols-2">
+        
+        <!-- Tip 1: Suspicious Activity -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-sec-title" class="text-base font-bold text-slate-900" data-key="tipSecurityTitle">Suspicious Activity Reporting</h3>
+            <p id="tip-sec-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipSecurityDesc">Maintain high situational awareness. Report unfamiliar groups, unusual vehicles, or suspicious nocturnal gatherings immediately to the Zamfara State Command.</p>
+          </div>
+        </div>
+
+        <!-- Tip 2: Fire Hazards -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50 border border-orange-100 text-orange-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-fire-title" class="text-base font-bold text-slate-900" data-key="tipFireTitle">Fire Hazard Prevention</h3>
+            <p id="tip-fire-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipFireDesc">Avoid overloading home sockets, inspect gas cylinders regularly, and keep basic extinguishing tools (sand buckets or fire extinguishers) accessible.</p>
+          </div>
+        </div>
+
+        <!-- Tip 3: Flood Safety -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-amber-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-flood-title" class="text-base font-bold text-slate-900" data-key="tipFloodTitle">Rainy Season & Flash Flood Safety</h3>
+            <p id="tip-flood-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipFloodDesc">Do not attempt to cross flooded roadways on foot or in vehicles. Ensure local drains are cleared of refuse prior to peak rainy seasons.</p>
+          </div>
+        </div>
+
+        <!-- Tip 4: First Aid -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-100 text-teal-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-med-title" class="text-base font-bold text-slate-900" data-key="tipMedicalTitle">First Aid & Scene Management</h3>
+            <p id="tip-med-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipMedicalDesc">Keep an emergency first aid kit. At accident scenes, first secure the environment from traffic flow before administering assistance or moving casualties.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      7. ABOUT, SIWES OBJECTIVES & SDG 16 Spotlight
+      ========================================== -->
+  <section id="about" class="py-20 bg-white border-b border-slate-100 scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-16 space-y-4">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-xs font-bold text-white uppercase tracking-wider">
+          UN SDG 16 Initiative
+        </span>
+        <h2 id="about-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl" data-key="aboutTitle">
+          About & Sustainable Development Goals
+        </h2>
+      </div>
+
+      <!-- SDG 16 Spotlight Card -->
+      <div class="bg-gradient-to-r from-emerald-950 to-slate-950 text-white rounded-3xl p-8 md:p-12 border border-slate-900 shadow-xl mb-12 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_100%_0%,rgba(16,185,129,0.15),transparent)]"></div>
+        <div class="relative grid gap-8 md:grid-cols-12 items-center">
+          
+          <!-- SDG Wheel Icon -->
+          <div class="md:col-span-3 flex justify-center">
+            <div class="w-28 h-28 rounded-full border-4 border-emerald-500/30 flex items-center justify-center bg-emerald-900/40 shadow-inner relative">
+              <span class="text-4xl font-black text-emerald-400 font-mono">16</span>
+              <span class="absolute bottom-2 text-[9px] font-extrabold uppercase tracking-widest text-emerald-300">Peace</span>
+            </div>
+          </div>
+          
+          <!-- SDG Core Content -->
+          <div class="md:col-span-9 space-y-4 text-center md:text-left">
+            <h3 id="about-sdg-title" class="text-xl font-extrabold text-slate-100" data-key="aboutSdgTitle">Sustainable Development Goal 16 (SDG 16)</h3>
+            <p id="about-sdg-text" class="text-sm text-slate-300 leading-relaxed" data-key="aboutSdgText">
+              Goal 16: Peace, Justice, and Strong Institutions. SafeAlert directly supports this global initiative by reinforcing public safety frameworks, establishing direct transparent communication lines, empowering citizens to report incidents, and boosting institutional responsiveness and accountability in Zamfara State.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Objectives & ZITDA Academic Endorsement -->
+      <div class="grid gap-8 lg:grid-cols-12 items-start">
+        
+        <!-- ZITDA SIWES Institutional Endorsement -->
+        <div class="lg:col-span-5 p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-inner space-y-4">
+          <div class="flex items-center gap-2.5 pb-4 border-b border-slate-200">
+            <div class="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-black text-xs">
+              ZITDA
+            </div>
+            <div>
+              <h4 id="ack-title" class="text-xs font-bold text-slate-900 uppercase tracking-wider" data-key="ackTitle">Institutional Acknowledgement</h4>
+              <span class="text-[10px] font-bold text-slate-400 uppercase font-mono">Verified Capstone</span>
+            </div>
+          </div>
+
+          <p id="ack-body" class="text-xs text-slate-600 leading-relaxed" data-key="ackBody">
+            This portal is a final production-grade academic capstone project developed during the Student Industrial Work Experience Scheme (SIWES) Training Programme at the Zamfara Information Technology Development Agency (ZITDA). Under the professional supervision of ZITDA technical mentors, this software was crafted to address the emergency communication requirements of Zamfara State.
+          </p>
+
+          <!-- SIWES Developer Card -->
+          <div class="p-4 bg-white border border-slate-200/60 rounded-xl flex items-center gap-3 shadow-sm">
+            <div class="h-11 w-11 rounded-full bg-slate-900 border border-slate-800 shrink-0 flex items-center justify-center font-extrabold text-white text-sm">
+              IBD
+            </div>
+            <div class="min-w-0">
+              <span id="dev-name" class="block text-xs font-extrabold text-slate-900 truncate" data-key="devName">Ismael Bukhary Dankoli</span>
+              <span id="dev-role" class="block text-[10px] font-medium text-slate-500 truncate" data-key="devRole">Computer Science SIWES Student</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project Objectives -->
+        <div class="lg:col-span-7 space-y-4">
+          <h3 id="about-obj-title" class="text-lg font-bold text-slate-900" data-key="aboutObjTitle">Project Core Objectives</h3>
+          
+          <ul class="space-y-3">
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">1</span>
+              <p id="obj-1" class="text-sm text-slate-600 leading-relaxed" data-key="obj1">Optimize emergency communication pathways between the state authorities and citizens.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">2</span>
+              <p id="obj-2" class="text-sm text-slate-600 leading-relaxed" data-key="obj2">Provide fully verified, reliable emergency contacts to prevent misinformation.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">3</span>
+              <p id="obj-3" class="text-sm text-slate-600 leading-relaxed" data-key="obj3">Enhance public safety and security awareness through tailored local safety tips.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">4</span>
+              <p id="obj-4" class="text-sm text-slate-600 leading-relaxed" data-key="obj4">Encourage active community participation and proactive neighborhood reporting.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">5</span>
+              <p id="obj-5" class="text-sm text-slate-600 leading-relaxed" data-key="obj5">Advance United Nations SDG 16 implementation at the sub-national state level.</p>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      8. FOOTER WITH ZITDA LOCATION & CONTACTS
+      ========================================== -->
+  <footer class="bg-slate-900 text-white pt-20 pb-8 relative overflow-hidden">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Contact Details Banner -->
+      <div class="grid gap-12 lg:grid-cols-12 items-start border-b border-slate-800 pb-16">
+        
+        <!-- Left Footer Brand -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-900/40">
+              <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </div>
+            <span class="text-xl font-black tracking-tight text-white">SafeAlert</span>
+          </div>
+          <p id="footer-tagline" class="text-xs text-slate-400 leading-relaxed" data-key="heroSubtitle">
+            A unified safety portal connecting the citizens of Zamfara State with verified security, medical, and disaster relief agencies. Empowering local response and supporting United Nations SDG 16.
+          </p>
+        </div>
+
+        <!-- Right: Official Contact Address Information -->
+        <div class="lg:col-span-7 grid gap-6 sm:grid-cols-3">
+          
+          <div class="space-y-2">
+            <h4 id="contact-addr-title" class="text-xs font-bold text-slate-400 uppercase tracking-wider" data-key="contactAddress">Address</h4>
+            <p id="office-addr" class="text-xs text-slate-300 leading-relaxed" data-key="officeAddress">ZITDA Headquarters, JB Yakubu Street, Gusau, Zamfara State, Nigeria</p>
+          </div>
+
+          <div class="space-y-2">
+            <h4 id="contact-email-title" class="text-xs font-bold text-slate-400 uppercase tracking-wider" data-key="contactEmail">Email Support</h4>
+            <a href="mailto:safealert@zitda.gov.ng" id="office-email" class="text-xs text-emerald-400 hover:underline block truncate" data-key="officeEmail">safealert@zitda.gov.ng</a>
+          </div>
+
+          <div class="space-y-2">
+            <h4 id="contact-hours-title" class="text-xs font-bold text-slate-400 uppercase tracking-wider" data-key="contactHours">Hours</h4>
+            <p id="office-hours" class="text-xs text-slate-300 leading-relaxed" data-key="officeHours">Monday - Friday: 08:00 AM - 04:00 PM</p>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Legal Bottom Panel -->
+      <div class="pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <div class="text-center md:text-left space-y-1">
+          <span id="foot-copy" class="text-xs text-slate-500 block" data-key="footCopy">© 2026 SafeAlert Portal. All Rights Reserved.</span>
+          <span id="foot-dev" class="text-[10px] text-slate-600 block" data-key="footDev">Developed by Ismael Bukhary Dankoli</span>
+        </div>
+
+        <div class="flex flex-wrap gap-4 text-[10px] text-slate-500 justify-center">
+          <span id="foot-sdg-label" data-key="footSdg">Supporting UN SDG 16 (Peace & Justice)</span>
+          <span>•</span>
+          <span id="foot-siwes-label" data-key="footSiwes">ZITDA SIWES Training Programme</span>
+        </div>
+
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ==========================================
+      9. ACTION SUCCESS MODAL (TICKET POPUP)
+      ========================================== -->
+  <div id="success-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      
+      <!-- Backdrop Overlay -->
+      <div onclick="closeModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
+
+      <!-- Center Container Element -->
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <!-- Modal Card -->
+      <div class="inline-block transform overflow-hidden rounded-3xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle p-8 border border-slate-100">
+        
+        <div class="flex flex-col items-center text-center">
+          
+          <!-- Animated Seal -->
+          <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 mb-6 animate-bounce">
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0110 21a3.745 3.745 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.745 3.745 0 013.296-1.043A3.746 3.746 0 0113 3a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+            </svg>
+          </div>
+
+          <h3 id="modal-success-title" class="text-xl font-extrabold text-slate-900 leading-snug" data-key="modalSuccessTitle">
+            Report Transmitted Successfully!
+          </h3>
+          <p id="modal-success-msg" class="mt-2 text-xs text-slate-600 leading-relaxed max-w-sm" data-key="modalSuccessMsg">
+            Your incident report has been securely registered on the SafeAlert local repository. A system reference ticket has been generated for SIWES simulation.
+          </p>
+
+          <!-- System Reference Ticket ID Display -->
+          <div class="mt-6 w-full rounded-2xl bg-slate-50 border border-slate-200/60 p-4 font-mono text-center">
+            <span id="modal-ticket-id-label" class="text-[10px] font-bold text-slate-400 block tracking-wider uppercase" data-key="modalTicketId">TICKET REFERENCE</span>
+            <span id="ticket-id-display" class="text-lg font-black text-slate-900 block mt-1">SA-GUS-9421A</span>
+          </div>
+
+          <div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100 text-[10px] text-amber-800 leading-relaxed" id="modal-notice" data-key="modalNotice">
+            Notice: This simulation portal is ready for secure deployment with EmailJS or Firebase integrations for live dashboard monitoring.
+          </div>
+
+          <!-- Dismiss Button -->
+          <button onclick="closeModal()" class="mt-6 w-full rounded-xl bg-slate-900 hover:bg-slate-800 py-3 text-xs font-bold text-white transition active:scale-95 cursor-pointer" id="modal-close-btn" data-key="btnCloseModal">
+            Close Reference
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet Map JS Package -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Core Bilingual Logic, System Database & Interactive Handlers -->
+  <script src="script.js" defer></script>
+</body>
+</html>

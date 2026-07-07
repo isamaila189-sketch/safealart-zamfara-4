@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeAlert – Zamfara State Community Safety Portal</title>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <!-- Custom Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Smooth Scrolling */
+    html {
+      scroll-behavior: smooth;
+    }
+    /* Hide scrollbars for interactive lists */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Custom Leaflet styling to match modern UI */
+    .leaflet-container {
+      font-family: 'Inter', sans-serif !important;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px !important;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+      border: 1px solid #e2e8f0 !important;
+      padding: 4px !important;
+    }
+    .leaflet-popup-tip {
+      background: white !important;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    }
+    /* Marker animations */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.33); opacity: 1; }
+      80%, 100% { opacity: 0; }
+    }
+    .marker-pulse {
+      position: relative;
+    }
+    .marker-pulse::after {
+      content: '';
+      position: absolute;
+      width: 300%;
+      height: 300%;
+      left: -100%;
+      top: -100%;
+      border-radius: 50%;
+      background-color: rgba(16, 185, 129, 0.4);
+      animation: pulse-ring 1.5s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- ==========================================
+      1. BILINGUAL NAVIGATION HEADER
+      ========================================== -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        
+        <!-- Logo Brand -->
+        <a href="#" class="flex items-center gap-2.5 transition active:scale-95">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-200">
+            <!-- Inline SVG Shield Icon -->
+            <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-lg font-extrabold tracking-tight text-slate-900 leading-none">SafeAlert</span>
+            <span id="header-tagline" class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5" data-key="tagline">Zamfara State Community Safety Portal</span>
+          </div>
+        </a>
+
+        <!-- Desktop Menu Options -->
+        <nav class="hidden md:flex items-center gap-6">
+          <a href="#directory" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navContacts">Emergency Contacts</a>
+          <a href="#map-section" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navMap">Interactive Map</a>
+          <a href="#report" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navReport">Report Incident</a>
+          <a href="#tips" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navTips">Safety Tips</a>
+          <a href="#about" class="text-xs font-semibold text-slate-600 transition hover:text-slate-900" data-key="navAbout">About & Objectives</a>
+        </nav>
+
+        <!-- Right Side: Dual-Language Selector & CTA -->
+        <div class="flex items-center gap-3">
+          
+          <!-- Lang Selector Button -->
+          <button id="lang-toggle-btn" onclick="toggleLanguage()" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition active:scale-95 cursor-pointer">
+            <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253" />
+            </svg>
+            <span id="lang-label">Hausa</span>
+          </button>
+
+          <!-- Quick Report CTA -->
+          <a href="#report" class="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm shadow-red-200 hover:bg-red-700 transition active:scale-95" data-key="navReport">
+            Report Incident
+          </a>
+
+          <!-- Mobile Menu Burger -->
+          <button id="mobile-menu-btn" onclick="toggleMobileMenu()" class="md:hidden flex items-center justify-center p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-slate-100 shadow-inner">
+      <div class="px-4 pt-2 pb-4 space-y-1">
+        <a href="#directory" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navContacts">Emergency Contacts</a>
+        <a href="#map-section" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navMap">Interactive Map</a>
+        <a href="#report" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navReport">Report Incident</a>
+        <a href="#tips" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navTips">Safety Tips</a>
+        <a href="#about" onclick="toggleMobileMenu()" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" data-key="navAbout">About & Objectives</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+      2. HERO CAMPAIGN BANNER WITH LIVE CLOCK
+      ========================================== -->
+  <section class="relative overflow-hidden bg-slate-900 text-white py-24 border-b border-slate-800">
+    <!-- Overlay Graphic Accents -->
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))]"></div>
+    <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-950/20 to-transparent"></div>
+
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid gap-12 lg:grid-cols-12 items-center">
+        
+        <!-- Hero Text -->
+        <div class="lg:col-span-7 text-left space-y-6">
+          
+          <!-- Academic Tag & Local Timestamp -->
+          <div class="inline-flex items-center gap-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-400">
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+            </span>
+            <span data-key="footSiwes">ZITDA SIWES Training Programme</span>
+            <span class="text-slate-600">|</span>
+            <span id="live-time" class="font-mono">GUSAU UTC: --:--:--</span>
+          </div>
+
+          <h1 id="hero-title" class="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl text-white leading-[1.1]" data-key="heroTitle">
+            Emergency Coordination & Community Protection
+          </h1>
+          <p id="hero-subtitle" class="text-lg text-slate-300 leading-relaxed max-w-2xl" data-key="heroSubtitle">
+            A unified safety portal connecting the citizens of Zamfara State with verified security, medical, and disaster relief agencies. Empowering local response and supporting United Nations SDG 16.
+          </p>
+
+          <div class="flex flex-wrap gap-4 pt-2">
+            <a href="#report" class="rounded-xl bg-red-600 hover:bg-red-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-900/30 transition hover:-translate-y-0.5 active:scale-95 flex items-center gap-2" data-key="heroBtnReport">
+              Report Secure Incident
+              <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12.75 15l3-3m0 0l-3-3m3 3h-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </a>
+            <a href="#directory" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3.5 text-sm font-bold text-slate-200 transition hover:-translate-y-0.5 active:scale-95 flex items-center gap-2" data-key="heroBtnContacts">
+              Emergency Directory
+              <svg class="h-4.5 w-4.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+            </a>
+          </div>
+
+          <div class="pt-4 flex items-start gap-2.5 max-w-xl text-xs text-slate-400">
+            <svg class="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p id="hero-emergency-notice" data-key="heroEmergencyNotice">In immediate life-threatening situations, please dial 112 or contact the respective agency directly.</p>
+          </div>
+
+        </div>
+
+        <!-- Hero Card / Mascot Banner -->
+        <div class="lg:col-span-5 relative">
+          <div class="absolute inset-0 bg-emerald-500 rounded-3xl opacity-10 blur-xl"></div>
+          <div class="relative bg-slate-950/40 border border-slate-800 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="w-3.5 h-3.5 rounded-full bg-red-500 inline-block animate-pulse"></span>
+                <span class="text-xs font-bold text-slate-300 font-mono tracking-wider">SECURE LINK STATUS</span>
+              </div>
+              <span class="text-[10px] font-bold text-emerald-400 font-mono">100% ONLINE</span>
+            </div>
+
+            <!-- Stats Mini Grid -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Zamfara Hub</span>
+                <span class="text-xl font-extrabold text-slate-100 block mt-1">11 Command HQs</span>
+              </div>
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Coverage Area</span>
+                <span class="text-xl font-extrabold text-slate-100 block mt-1">14 Local Govts</span>
+              </div>
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Universal Code</span>
+                <span class="text-xl font-extrabold text-slate-100 block mt-1 font-mono">Dial 112 / 122</span>
+              </div>
+              <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Active Patrols</span>
+                <span class="text-xl font-extrabold text-emerald-400 block mt-1">Verified Live</span>
+              </div>
+            </div>
+
+            <!-- SIWES Capstone Endorsement -->
+            <div class="mt-4 p-3 bg-emerald-950/20 rounded-xl border border-emerald-900/40 text-[11px] text-emerald-300 leading-relaxed flex gap-2">
+              <svg class="h-4.5 w-4.5 text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>SIWES Capstone Endorsement: Designed in collaboration with <strong>Zamfara Information Technology Development Agency (ZITDA)</strong>.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+      3. DIRECTORY SECTION (VERIFIED CONTACTS & INSTANT FILTERS)
+      ========================================== -->
+  <section id="directory" class="py-20 bg-white scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 id="contacts-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl" data-key="contactsTitle">
+          Verified Emergency Directory
+        </h2>
+        <p id="contacts-subtitle" class="mt-4 text-lg text-slate-600" data-key="contactsSubtitle">
+          Direct communication channels to all major official emergency response agencies operating in Zamfara State.
+        </p>
+      </div>
+
+      <!-- Live Search & Category Tabs -->
+      <div class="mb-8 space-y-4">
+        <div class="grid gap-4 md:grid-cols-12 items-center">
+          
+          <!-- Modern Search Bar -->
+          <div class="md:col-span-6 relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input 
+              type="text" 
+              id="search-input"
+              oninput="handleSearch()"
+              placeholder="Search agencies by name, category, website, phone..." 
+              class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400 shadow-sm"
+              data-placeholder="searchPlaceholder"
+            />
+          </div>
+
+          <!-- Category Filtering Tabs -->
+          <div class="md:col-span-6 flex flex-wrap gap-2 justify-start md:justify-end">
+            <button onclick="filterCategory('All')" id="tab-All" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-md shadow-emerald-100 cursor-pointer" data-key="categoryAll">All Services</button>
+            <button onclick="filterCategory('Security')" id="tab-Security" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer" data-key="categorySecurity">Security & Defence</button>
+            <button onclick="filterCategory('Disaster')" id="tab-Disaster" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer" data-key="categoryDisaster">Disaster & Fire</button>
+            <button onclick="filterCategory('Medical')" id="tab-Medical" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer" data-key="categoryMedical">Medical & Health</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Agencies Cards Layout -->
+      <div id="agencies-grid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      4. INTERACTIVE EMERGENCY OPERATIONS MAP (LEAFLET)
+      ========================================== -->
+  <section id="map-section" class="py-20 bg-slate-100 border-y border-slate-200 scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-12">
+        <h2 id="map-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl flex items-center justify-center gap-3" data-key="mapTitle">
+          <svg class="h-8 w-8 text-emerald-500 shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Interactive Emergency Operations Map (Gusau)
+        </h2>
+        <p id="map-subtitle" class="mt-4 text-lg text-slate-600" data-key="mapSubtitle">
+          Approximate geographic locations of the 11 verified command and emergency response headquarters in Gusau.
+        </p>
+      </div>
+
+      <div class="grid gap-8 lg:grid-cols-12">
+        
+        <!-- Sidebar Command Selector Dashboard -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider" id="sidebar-header">Command Headquarters</h3>
+              <button onclick="recenterMap()" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition-all flex items-center gap-1 cursor-pointer" id="recenter-btn" data-key="mapRecenter">
+                Recenter on Gusau
+              </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed" id="select-prompt" data-key="mapSelectPrompt">
+              Select any coordinate pin on the map to display official agency contact coordinates.
+            </p>
+
+            <!-- Interactive sidebar command button container -->
+            <div id="map-sidebar-list" class="space-y-2 max-h-[380px] overflow-y-auto pr-1 no-scrollbar">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Legend Card -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3" id="legend-header">Map Legend</h4>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2.5 text-xs text-slate-600">
+                <span class="w-3.5 h-3.5 rounded-full bg-blue-600 border border-white shadow-sm inline-block shrink-0"></span>
+                <span id="legend-security" data-key="mapCategorySecurity">Security Command Center</span>
+              </div>
+              <div class="flex items-center gap-2.5 text-xs text-slate-600">
+                <span class="w-3.5 h-3.5 rounded-full bg-orange-600 border border-white shadow-sm inline-block shrink-0"></span>
+                <span id="legend-disaster" data-key="mapCategoryDisaster">Disaster / Fire Response HQ</span>
+              </div>
+              <div class="flex items-center gap-2.5 text-xs text-slate-600">
+                <span class="w-3.5 h-3.5 rounded-full bg-teal-600 border border-white shadow-sm inline-block shrink-0"></span>
+                <span id="legend-medical" data-key="mapCategoryMedical">Medical Emergency Base</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaflet Map Canvas Grid -->
+        <div class="lg:col-span-8">
+          <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-md overflow-hidden relative">
+            <div id="leaflet-map" class="h-[480px] w-full rounded-2xl overflow-hidden relative z-10"></div>
+            
+            <!-- Real-time Status Overlay -->
+            <div class="absolute bottom-6 right-6 z-20 bg-slate-900/90 backdrop-blur-md text-white rounded-xl px-4 py-2 text-[11px] border border-slate-800 shadow-lg pointer-events-none flex items-center gap-2">
+              <span class="flex h-2 w-2 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span class="font-mono">SIWES Simulation: Active Map Feeds (Gusau Hub)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      5. SECURE INCIDENT REPORT FORM (WITH TICKET GENERATION)
+      ========================================== -->
+  <section id="report" class="py-20 bg-white border-y border-slate-200 scroll-mt-12">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <h2 id="form-title" class="text-3xl font-extrabold tracking-tight text-slate-900" data-key="formTitle">
+          Secure Incident Reporter
+        </h2>
+        <p id="form-subtitle" class="mt-4 text-base text-slate-600" data-key="formSubtitle">
+          Securely submit incident details to first responder coordinates. This system is structured for future CRM and emergency response dispatch integration.
+        </p>
+      </div>
+
+      <!-- Reporter Form Container -->
+      <div class="bg-slate-50 rounded-3xl border border-slate-200 p-8 shadow-sm">
+        <form id="incident-form" onsubmit="submitIncident(event)" class="space-y-6">
+          
+          <div class="grid gap-6 md:grid-cols-2">
+            <!-- Full Name -->
+            <div class="flex flex-col gap-1.5">
+              <label for="reporter-name" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-name" data-key="formName">Reporter's Full Name</label>
+              <input 
+                type="text" 
+                id="reporter-name" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+                placeholder="e.g. Aliyu Danjuma"
+              />
+              <span id="err-name" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+
+            <!-- Phone Number -->
+            <div class="flex flex-col gap-1.5">
+              <label for="reporter-phone" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-phone" data-key="formPhone">Active Phone Number</label>
+              <input 
+                type="tel" 
+                id="reporter-phone" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+                placeholder="e.g. 08031234567"
+              />
+              <span id="err-phone" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+          </div>
+
+          <div class="grid gap-6 md:grid-cols-2">
+            <!-- Classification -->
+            <div class="flex flex-col gap-1.5">
+              <label for="incident-type" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-type" data-key="formType">Incident Classification</label>
+              <select 
+                id="incident-type" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition bg-white"
+              >
+                <option value="" disabled selected id="type-placeholder" data-key="formTypePlaceholder">Select classification...</option>
+                <option value="Security">Security Breach / Unrest (Tsaro)</option>
+                <option value="Fire">Fire Hazard / Outbreak (Gobara)</option>
+                <option value="Flood">Environmental Disaster / Flood (Agaji)</option>
+                <option value="Medical">Severe Medical Emergency (Lafiya)</option>
+                <option value="Road Accident">Road Traffic Accident (Hatsari)</option>
+              </select>
+              <span id="err-type" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+
+            <!-- Location -->
+            <div class="flex flex-col gap-1.5">
+              <label for="incident-location" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-location" data-key="formLocation">Location / LGA in Zamfara State</label>
+              <input 
+                type="text" 
+                id="incident-location" 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+                placeholder="e.g., Gusau, Kaura Namoda, Maru, Talata Mafara..."
+                data-placeholder="formLocationPlaceholder"
+              />
+              <span id="err-location" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+            </div>
+          </div>
+
+          <!-- Date & Time -->
+          <div class="flex flex-col gap-1.5">
+            <label for="incident-date" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-date" data-key="formDate">Incident Date & Time</label>
+            <input 
+              type="datetime-local" 
+              id="incident-date" 
+              class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition bg-white"
+            />
+            <span id="err-date" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+          </div>
+
+          <!-- Description -->
+          <div class="flex flex-col gap-1.5">
+            <label for="incident-desc" class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="lbl-desc" data-key="formDesc">Detailed Description of Incident</label>
+            <textarea 
+              id="incident-desc" 
+              rows="4"
+              class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition placeholder:text-slate-400"
+              placeholder="Provide a clear description of what is happening, casualties (if any), and current hazards..."
+              data-placeholder="formDescPlaceholder"
+            ></textarea>
+            <span id="err-desc" class="hidden text-xs font-bold text-red-600 mt-1"></span>
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit" 
+            id="submit-btn"
+            class="w-full rounded-2xl bg-red-600 hover:bg-red-700 px-6 py-4 text-sm font-bold text-white shadow-md shadow-red-200 transition-all hover:shadow-lg active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            data-key="btnSubmitForm"
+          >
+            Transmit Emergency Report
+          </button>
+
+        </form>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      6. COMMUNITY SAFETY GUIDELINES
+      ========================================== -->
+  <section id="tips" class="py-20 bg-slate-50 scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 id="tips-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl" data-key="tipsTitle">
+          Community Safety Guidelines
+        </h2>
+        <p id="tips-subtitle" class="mt-4 text-lg text-slate-600" data-key="tipsSubtitle">
+          Vital protective guidelines and safety instructions for residents of Zamfara State to prevent accidents and manage crisis.
+        </p>
+      </div>
+
+      <!-- Guidelines Grid -->
+      <div class="grid gap-8 md:grid-cols-2">
+        
+        <!-- Tip 1 -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-sec-title" class="text-base font-bold text-slate-900" data-key="tipSecurityTitle">Suspicious Activity Reporting</h3>
+            <p id="tip-sec-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipSecurityDesc">Maintain high situational awareness. Report unfamiliar groups, unusual vehicles, or suspicious nocturnal gatherings immediately to the Zamfara State Command.</p>
+          </div>
+        </div>
+
+        <!-- Tip 2 -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50 border border-orange-100 text-orange-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-fire-title" class="text-base font-bold text-slate-900" data-key="tipFireTitle">Fire Hazard Prevention</h3>
+            <p id="tip-fire-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipFireDesc">Avoid overloading home sockets, inspect gas cylinders regularly, and keep basic extinguishing tools (sand buckets or fire extinguishers) accessible.</p>
+          </div>
+        </div>
+
+        <!-- Tip 3 -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-amber-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-flood-title" class="text-base font-bold text-slate-900" data-key="tipFloodTitle">Rainy Season & Flash Flood Safety</h3>
+            <p id="tip-flood-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipFloodDesc">Do not attempt to cross flooded roadways on foot or in vehicles. Ensure local drains are cleared of refuse prior to peak rainy seasons.</p>
+          </div>
+        </div>
+
+        <!-- Tip 4 -->
+        <div class="flex gap-4 p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-100 text-teal-600">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 id="tip-med-title" class="text-base font-bold text-slate-900" data-key="tipMedicalTitle">First Aid & Scene Management</h3>
+            <p id="tip-med-desc" class="text-sm text-slate-600 leading-relaxed" data-key="tipMedicalDesc">Keep an emergency first aid kit. At accident scenes, first secure the environment from traffic flow before administering assistance or moving casualties.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      7. ABOUT, SIWES OBJECTIVES & ACKNOWLEDGEMENTS (SDG 16)
+      ========================================== -->
+  <section id="about" class="py-20 bg-white border-b border-slate-100 scroll-mt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Academic Endorsement Badge & Header -->
+      <div class="text-center max-w-3xl mx-auto mb-16 space-y-4">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1 text-xs font-bold text-white uppercase tracking-wider">
+          UN SDG 16 Initiative
+        </span>
+        <h2 id="about-title" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl" data-key="aboutTitle">
+          About & Sustainable Development Goals
+        </h2>
+      </div>
+
+      <!-- SDG 16 Spotlight Card -->
+      <div class="bg-gradient-to-r from-emerald-950 to-slate-950 text-white rounded-3xl p-8 md:p-12 border border-slate-900 shadow-xl mb-12 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_100%_0%,rgba(16,185,129,0.15),transparent)]"></div>
+        <div class="relative grid gap-8 md:grid-cols-12 items-center">
+          <!-- SDG Wheel Icon -->
+          <div class="md:col-span-3 flex justify-center">
+            <div class="w-28 h-28 rounded-full border-4 border-emerald-500/30 flex items-center justify-center bg-emerald-900/40 shadow-inner relative">
+              <span class="text-4xl font-black text-emerald-400 font-mono">16</span>
+              <span class="absolute bottom-2 text-[9px] font-extrabold uppercase tracking-widest text-emerald-300">Peace</span>
+            </div>
+          </div>
+          <!-- SDG Core Content -->
+          <div class="md:col-span-9 space-y-4 text-center md:text-left">
+            <h3 id="about-sdg-title" class="text-xl font-extrabold text-slate-100" data-key="aboutSdgTitle">Sustainable Development Goal 16 (SDG 16)</h3>
+            <p id="about-sdg-text" class="text-sm text-slate-300 leading-relaxed" data-key="aboutSdgText">
+              Goal 16: Peace, Justice, and Strong Institutions. SafeAlert directly supports this global initiative by reinforcing public safety frameworks, establishing direct transparent communication lines, empowering citizens to report incidents, and boosting institutional responsiveness and accountability in Zamfara State.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Project Objectives & ZITDA Academic Endorsement Grid -->
+      <div class="grid gap-8 lg:grid-cols-12 items-start">
+        
+        <!-- ZITDA SIWES Institutional Endorsement -->
+        <div class="lg:col-span-5 p-6 rounded-2xl border border-slate-200 bg-slate-50 shadow-inner space-y-4">
+          <div class="flex items-center gap-2.5 pb-4 border-b border-slate-200">
+            <div class="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-800 font-black text-xs">
+              ZITDA
+            </div>
+            <div>
+              <h4 id="ack-title" class="text-xs font-bold text-slate-900 uppercase tracking-wider" data-key="ackTitle">Institutional Acknowledgement</h4>
+              <span class="text-[10px] font-bold text-slate-400 uppercase font-mono">Verified Capstone</span>
+            </div>
+          </div>
+
+          <p id="ack-body" class="text-xs text-slate-600 leading-relaxed" data-key="ackBody">
+            This portal is a final production-grade academic capstone project developed during the Student Industrial Work Experience Scheme (SIWES) Training Programme at the Zamfara Information Technology Development Agency (ZITDA). Under the professional supervision of ZITDA technical mentors, this software was crafted to address the emergency communication requirements of Zamfara State.
+          </p>
+
+          <!-- SIWES Developer Card -->
+          <div class="p-4 bg-white border border-slate-200/60 rounded-xl flex items-center gap-3 shadow-sm">
+            <div class="h-11 w-11 rounded-full bg-slate-900 border border-slate-800 shrink-0 flex items-center justify-center font-extrabold text-white text-sm">
+              IBD
+            </div>
+            <div class="min-w-0">
+              <span id="dev-name" class="block text-xs font-extrabold text-slate-900 truncate" data-key="devName">Ismael Bukhary Dankoli</span>
+              <span id="dev-role" class="block text-[10px] font-medium text-slate-500 truncate" data-key="devRole">Computer Science SIWES Student</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- System Core Objectives -->
+        <div class="lg:col-span-7 space-y-4">
+          <h3 id="about-obj-title" class="text-lg font-bold text-slate-900" data-key="aboutObjTitle">Project Core Objectives</h3>
+          
+          <ul class="space-y-3">
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">1</span>
+              <p id="obj-1" class="text-sm text-slate-600 leading-relaxed" data-key="obj1">Optimize emergency communication pathways between the state authorities and citizens.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">2</span>
+              <p id="obj-2" class="text-sm text-slate-600 leading-relaxed" data-key="obj2">Provide fully verified, reliable emergency contacts to prevent misinformation.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">3</span>
+              <p id="obj-3" class="text-sm text-slate-600 leading-relaxed" data-key="obj3">Enhance public safety and security awareness through tailored local safety tips.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">4</span>
+              <p id="obj-4" class="text-sm text-slate-600 leading-relaxed" data-key="obj4">Encourage active community participation and proactive neighborhood reporting.</p>
+            </li>
+            <li class="flex gap-3">
+              <span class="h-6 w-6 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 shrink-0 flex items-center justify-center text-xs font-extrabold">5</span>
+              <p id="obj-5" class="text-sm text-slate-600 leading-relaxed" data-key="obj5">Advance United Nations SDG 16 implementation at the sub-national state level.</p>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==========================================
+      8. VERIFIED GEOGRAPHIC CONTACT & FOOTER
+      ========================================== -->
+  <footer class="bg-slate-900 text-white pt-20 pb-8 relative overflow-hidden">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      
+      <!-- Contact details banner -->
+      <div class="grid gap-12 lg:grid-cols-12 items-start border-b border-slate-800 pb-16">
+        
+        <!-- Left Footer Brand -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-900/40">
+              <svg class="h-5.5 w-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+            </div>
+            <span class="text-xl font-black tracking-tight text-white">SafeAlert</span>
+          </div>
+          <p id="footer-tagline" class="text-xs text-slate-400 leading-relaxed" data-key="heroSubtitle">
+            A unified safety portal connecting the citizens of Zamfara State with verified security, medical, and disaster relief agencies. Empowering local response and supporting United Nations SDG 16.
+          </p>
+        </div>
+
+        <!-- Right: Official Contact Address Info -->
+        <div class="lg:col-span-7 grid gap-6 sm:grid-cols-3">
+          
+          <div class="space-y-2">
+            <h4 id="contact-addr-title" class="text-xs font-bold text-slate-400 uppercase tracking-wider" data-key="contactAddress">Address</h4>
+            <p id="office-addr" class="text-xs text-slate-300 leading-relaxed" data-key="officeAddress">ZITDA Headquarters, JB Yakubu Street, Gusau, Zamfara State, Nigeria</p>
+          </div>
+
+          <div class="space-y-2">
+            <h4 id="contact-email-title" class="text-xs font-bold text-slate-400 uppercase tracking-wider" data-key="contactEmail">Email Support</h4>
+            <a href="mailto:safealert@zitda.gov.ng" id="office-email" class="text-xs text-emerald-400 hover:underline block truncate" data-key="officeEmail">safealert@zitda.gov.ng</a>
+          </div>
+
+          <div class="space-y-2">
+            <h4 id="contact-hours-title" class="text-xs font-bold text-slate-400 uppercase tracking-wider" data-key="contactHours">Hours</h4>
+            <p id="office-hours" class="text-xs text-slate-300 leading-relaxed" data-key="officeHours">Monday - Friday: 08:00 AM - 04:00 PM</p>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Legal Bottom Panel -->
+      <div class="pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <div class="text-center md:text-left space-y-1">
+          <span id="foot-copy" class="text-xs text-slate-500 block" data-key="footCopy">© 2026 SafeAlert Portal. All Rights Reserved.</span>
+          <span id="foot-dev" class="text-[10px] text-slate-600 block" data-key="footDev">Developed by Ismael Bukhary Dankoli</span>
+        </div>
+
+        <div class="flex flex-wrap gap-4 text-[10px] text-slate-500 justify-center">
+          <span id="foot-sdg-label" data-key="footSdg">Supporting UN SDG 16 (Peace & Justice)</span>
+          <span>•</span>
+          <span id="foot-siwes-label" data-key="footSiwes">ZITDA SIWES Training Programme</span>
+        </div>
+
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ==========================================
+      9. ACTION SUCCESS MODAL (TICKET POPUP)
+      ========================================== -->
+  <div id="success-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      
+      <!-- Backdrop overlay -->
+      <div onclick="closeModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
+
+      <!-- Center container element -->
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <!-- Modal Card -->
+      <div class="inline-block transform overflow-hidden rounded-3xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle p-8 border border-slate-100">
+        
+        <div class="flex flex-col items-center text-center">
+          <!-- Icon Seal -->
+          <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 mb-6 animate-bounce">
+            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0110 21a3.745 3.745 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.745 3.745 0 013.296-1.043A3.746 3.746 0 0113 3a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+            </svg>
+          </div>
+
+          <h3 id="modal-success-title" class="text-xl font-extrabold text-slate-900 leading-snug" data-key="modalSuccessTitle">
+            Report Transmitted Successfully!
+          </h3>
+          <p id="modal-success-msg" class="mt-2 text-xs text-slate-600 leading-relaxed max-w-sm" data-key="modalSuccessMsg">
+            Your incident report has been securely registered on the SafeAlert local repository. A system reference ticket has been generated for SIWES simulation.
+          </p>
+
+          <!-- System reference ticket box -->
+          <div class="mt-6 w-full rounded-2xl bg-slate-50 border border-slate-200/60 p-4 font-mono text-center">
+            <span id="modal-ticket-id-label" class="text-[10px] font-bold text-slate-400 block tracking-wider uppercase" data-key="modalTicketId">TICKET REFERENCE</span>
+            <span id="ticket-id-display" class="text-lg font-black text-slate-900 block mt-1">SA-GUS-9421A</span>
+          </div>
+
+          <div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100 text-[10px] text-amber-800 leading-relaxed" id="modal-notice" data-key="modalNotice">
+            Notice: This simulation portal is ready for secure deployment with EmailJS or Firebase integrations for live dashboard monitoring.
+          </div>
+
+          <!-- Action Dismiss Button -->
+          <button onclick="closeModal()" class="mt-6 w-full rounded-xl bg-slate-900 hover:bg-slate-800 py-3 text-xs font-bold text-white transition active:scale-95 cursor-pointer" id="modal-close-btn" data-key="btnCloseModal">
+            Close Reference
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet Map Script JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- ==========================================
+      10. CORE BILINGUAL LOGIC & SYSTEM DATABASE
+      ========================================== -->
+  <script>
+    // System Translations Object (Direct parity with React)
+    const translations = {
+      en: {
+        brand: "SafeAlert",
+        tagline: "Zamfara State Community Safety Portal",
+        navHome: "Home",
+        navContacts: "Emergency Contacts",
+        navMap: "Interactive Map",
+        navReport: "Report Incident",
+        navTips: "Safety Tips",
+        navAbout: "About & Objectives",
+        heroTitle: "Emergency Coordination & Community Protection",
+        heroSubtitle: "A unified safety portal connecting the citizens of Zamfara State with verified security, medical, and disaster relief agencies. Empowering local response and supporting United Nations SDG 16.",
+        heroBtnReport: "Report Secure Incident",
+        heroBtnContacts: "Emergency Directory",
+        heroEmergencyNotice: "In immediate life-threatening situations, please dial 112 or contact the respective agency directly.",
+        searchPlaceholder: "Search agencies by name, category, website, phone...",
+        categoryAll: "All Services",
+        categorySecurity: "Security & Defence",
+        categoryDisaster: "Disaster & Fire",
+        categoryMedical: "Medical & Health",
+        contactsTitle: "Verified Emergency Directory",
+        contactsSubtitle: "Direct communication channels to all major official emergency response agencies operating in Zamfara State.",
+        agencyHours: "Available hours",
+        agencyAlways: "24/7 Emergency Service",
+        btnCall: "Call Now",
+        btnWebsite: "Visit Website",
+        formTitle: "Secure Incident Reporter",
+        formSubtitle: "Securely submit incident details to first responder coordinates. This system is structured for future CRM and emergency response dispatch integration.",
+        formName: "Reporter's Full Name",
+        formPhone: "Active Phone Number",
+        formType: "Incident Classification",
+        formTypePlaceholder: "Select classification...",
+        formLocation: "Location / LGA in Zamfara State",
+        formLocationPlaceholder: "e.g., Gusau, Kaura Namoda, Maru, Talata Mafara...",
+        formDate: "Incident Date & Time",
+        formDesc: "Detailed Description of Incident",
+        formDescPlaceholder: "Provide a clear description of what is happening, casualties (if any), and current hazards...",
+        btnSubmitForm: "Transmit Emergency Report",
+        valName: "Full Name is required for official validation.",
+        valPhone: "A valid Nigerian phone number is required.",
+        valType: "Please classify the nature of the incident.",
+        valLocation: "Please specify the Local Government Area or location.",
+        valDate: "Please select the date and approximate time.",
+        valDesc: "Please provide a brief description to aid first responders.",
+        modalSuccessTitle: "Report Transmitted Successfully!",
+        modalSuccessMsg: "Your incident report has been securely registered on the SafeAlert local repository. A system reference ticket has been generated for SIWES simulation.",
+        modalTicketId: "TICKET REFERENCE",
+        modalNotice: "Notice: This simulation portal is ready for secure deployment with EmailJS or Firebase integrations for live dashboard monitoring.",
+        btnCloseModal: "Close Reference",
+        tipsTitle: "Community Safety Guidelines",
+        tipsSubtitle: "Vital protective guidelines and safety instructions for residents of Zamfara State to prevent accidents and manage crisis.",
+        tipSecurityTitle: "Suspicious Activity Reporting",
+        tipSecurityDesc: "Maintain high situational awareness. Report unfamiliar groups, unusual vehicles, or suspicious nocturnal gatherings immediately to the Zamfara State Command.",
+        tipFireTitle: "Fire Hazard Prevention",
+        tipFireDesc: "Avoid overloading home sockets, inspect gas cylinders regularly, and keep basic extinguishing tools (sand buckets or fire extinguishers) accessible.",
+        tipFloodTitle: "Rainy Season & Flash Flood Safety",
+        tipFloodDesc: "Do not attempt to cross flooded roadways on foot or in vehicles. Ensure local drains are cleared of refuse prior to peak rainy seasons.",
+        tipMedicalTitle: "First Aid & Scene Management",
+        tipMedicalDesc: "Keep an emergency first aid kit. At accident scenes, first secure the environment from traffic flow before administering assistance or moving casualties.",
+        aboutTitle: "About & Sustainable Development Goals",
+        aboutSdgTitle: "Sustainable Development Goal 16 (SDG 16)",
+        aboutSdgText: "Goal 16: Peace, Justice, and Strong Institutions. SafeAlert directly supports this global initiative by reinforcing public safety frameworks, establishing direct transparent communication lines, empowering citizens to report incidents, and boosting institutional responsiveness and accountability in Zamfara State.",
+        aboutObjTitle: "Project Core Objectives",
+        obj1: "Optimize emergency communication pathways between the state authorities and citizens.",
+        obj2: "Provide fully verified, reliable emergency contacts to prevent misinformation.",
+        obj3: "Enhance public safety and security awareness through tailored local safety tips.",
+        obj4: "Encourage active community participation and proactive neighborhood reporting.",
+        obj5: "Advance United Nations SDG 16 implementation at the sub-national state level.",
+        ackTitle: "Institutional Acknowledgement",
+        ackBody: "This portal is a final production-grade academic capstone project developed during the Student Industrial Work Experience Scheme (SIWES) Training Programme at the Zamfara Information Technology Development Agency (ZITDA). Under the professional supervision of ZITDA technical mentors, this software was crafted to address the emergency communication requirements of Zamfara State.",
+        devTitle: "SIWES Developer Profile",
+        devName: "Ismael Bukhary Dankoli",
+        devRole: "Computer Science SIWES Student",
+        devInstitution: "Zamfara Information Technology Development Agency (ZITDA)",
+        devDepartment: "Department of Computer Science",
+        devContactSlogan: "Let's connect or discuss production deployments.",
+        contactTitle: "Get in Touch",
+        contactSubtitle: "For inquiries regarding the SIWES research project, system scalability, or technical review.",
+        contactAddress: "Address",
+        contactEmail: "Email Support",
+        contactHours: "Hours",
+        officeAddress: "ZITDA Headquarters, JB Yakubu Street, Gusau, Zamfara State, Nigeria",
+        officeEmail: "safealert@zitda.gov.ng",
+        officeHours: "Monday - Friday: 08:00 AM - 04:00 PM",
+        mapTitle: "Interactive Emergency Operations Map (Gusau)",
+        mapSubtitle: "Approximate geographic locations of the 11 verified command and emergency response headquarters in Gusau.",
+        mapRecenter: "Recenter on Gusau Center",
+        mapSelectPrompt: "Select any coordinate pin on the map to display official agency contact coordinates.",
+        mapCategorySecurity: "Security Command Center",
+        mapCategoryDisaster: "Disaster / Fire Response HQ",
+        mapCategoryMedical: "Medical Emergency Base",
+        footDev: "Developed by Ismael Bukhary Dankoli",
+        footSiwes: "ZITDA SIWES Training Programme",
+        footSdg: "Supporting UN SDG 16 (Peace & Justice)",
+        footCopy: "© 2026 SafeAlert Portal. All Rights Reserved."
+      },
+      ha: {
+        brand: "SafeAlert",
+        tagline: "Dandalin Tsaron Al'umma na Jihar Zamfara",
+        navHome: "Gida",
+        navContacts: "Lambobin Gaggawa",
+        navMap: "Taswirar Gusau",
+        navReport: "Aiko da Rahoto",
+        navTips: "Shawarwarin Tsaro",
+        navAbout: "Bayani & Manufofi",
+        heroTitle: "Hadin Gwiwar Agaji da Kare Al'umma",
+        heroSubtitle: "Hanyar sadarwa ta bai-daya da ke haɗa al'ummar Jihar Zamfara da kwararrun jami'an tsaro, jiyya, da agajin gaggawa. Karfafa daukar mataki da tallafawa shirin SDG 16 na Majalisar Dinkin Duniya.",
+        heroBtnReport: "Aika Rahoton Gaggawa",
+        heroBtnContacts: "Lambobin Jami'ai",
+        heroEmergencyNotice: "Idan akwai haɗari na gaggawa ga rayuwa, a kira 112 ko a tuntuɓi jami'ai kai tsaye.",
+        searchPlaceholder: "Nemi jami'ai ta suna, nau'i, shafi, ko waya...",
+        categoryAll: "Duk Jami'o'i",
+        categorySecurity: "Tsaro da Kariya",
+        categoryDisaster: "Gobara da Agaji",
+        categoryMedical: "Lafiya da Asibiti",
+        contactsTitle: "Tabbatattun Lambobin Gaggawa",
+        contactsSubtitle: "Hanyar sadarwa ta kai-tsaye tare da dukkan manyan hukumomin agaji da ke aiki a Jihar Zamfara.",
+        agencyHours: "Lokutan Aiki",
+        agencyAlways: "Kullum Awanni 24 (Gaggawa)",
+        btnCall: "Kira Yanzu",
+        btnWebsite: "Ziyarci Shafi",
+        formTitle: "Fom na Rahoton Gaggawa",
+        formSubtitle: "Aika cikakken rahoton abin da ya faru cikin sirri ga jami'an agaji. An tsara wannan fom don haɗawa da tsarin kula da gaggawa a nan gaba.",
+        formName: "Cikakken Sunan Mai Rahoto",
+        formPhone: "Lambar Waya Mai Aiki",
+        formType: "Rukunin Lamarin da Ya Faru",
+        formTypePlaceholder: "Zaɓi rukunin lamari...",
+        formLocation: "Wuri / Ƙaramar Hukuma a Zamfara",
+        formLocationPlaceholder: "Kamar Gusau, Kaura Namoda, Maru, Talata Mafara...",
+        formDate: "Kwanan Wata da Lokacin Lamari",
+        formDesc: "Cikakken Bayanin Abin da Ya Faru",
+        formDescPlaceholder: "Ba da bayani dalla-dalla na abin da ke faruwa, mutanen da abin ya shafa, da haɗarin da ke akwai...",
+        btnSubmitForm: "Aika Rahoto Cikin Tsaro",
+        valName: "Ana buƙatar Cikakken Suna don tabbatar da rahoton.",
+        valPhone: "Ana buƙatar ingantacciyar lambar wayar Najeriya.",
+        valType: "Da fatan za a zaɓi nau'in lamarin da ya faru.",
+        valLocation: "Da fatan za a bayyana Ƙaramar Hukuma ko wurin da abin ya faru.",
+        valDate: "Ana buƙatar ranar da lokacin da abin ya faru.",
+        valDesc: "Da fatan za a ba da ɗan takaitaccen bayani don taimakawa jami'an agaji.",
+        modalSuccessTitle: "An Aika Rahoto Cikin Nasara!",
+        modalSuccessMsg: "An yi nasarar rijistar rahotonku a dandalin SafeAlert. An samar da lambar shaida ta musamman don tsarin SIWES.",
+        modalTicketId: "LAMBAR SHADA",
+        modalNotice: "Sanarwa: An tsara wannan dandalin gwaji don haɗawa cikin sauƙi da EmailJS ko Firebase don bibiyar rahoton kai-tsaye.",
+        btnCloseModal: "Rufe",
+        tipsTitle: "Hanyoyin Kariya da Tsaro",
+        tipsSubtitle: "Muhimman shawarwari da hanyoyin kariya ga mazauna Jihar Zamfara domin guje wa haɗari da kiyaye tsaro.",
+        tipSecurityTitle: "Rahoton Harkokin Tsaro",
+        tipSecurityDesc: "Kula da abubuwan da ke faruwa a kusa da ku. Bayar da rahoton mutanen da ba a sani ba ko zirga-zirgar dare da wuri ga jami'an tsaro na kusa.",
+        tipFireTitle: "Kariya Daga Gobara",
+        tipFireDesc: "Guji ɗora kayan wuta da yawa a kan madaidaiciya guda ɗaya, duba gas ɗin dafa abinci akai-akai, kina ajiye yashi ko na'urar kashe gobara kusa.",
+        tipFloodTitle: "Tsharon Ambaliyar Ruwa",
+        tipFloodDesc: "Kada ku yi kokarin tsallake hanyoyin da ruwa ya mamaye. Tabbatar an share magudanan ruwa na unguwa kafin lokacin damina ya yi nisa.",
+        tipMedicalTitle: "Agajin Gaggawa na Farko",
+        tipMedicalDesc: "Ajiye akwatin magungunan gaggawa. A wurin da hatsari ya faru, tabbatar da kiyaye lafiyar wurin tukunna kafin bayar da taimako ga wadanda suka ji rauni.",
+        aboutTitle: "Bayani Game da Burin SDG 16",
+        aboutSdgTitle: "Burin Ci Gaba Mai Dorewa na 16 (SDG 16)",
+        aboutSdgText: "Burin 16: Zaman Lafiya, Adalci, da Kakkarfan Hukumomi. Dandalin SafeAlert yana tallafawa wannan yunkuri ta hanyar karfafa tsarin tsaron jama'a, samar da hanyoyin sadarwa na gari na gaskiya, ba da dama ga 'yan kasa su aiko da rahotanni, da inganta gaskiya da rikon amana a Jihar Zamfara.",
+        aboutObjTitle: "Babban Manufofin Wannan Aiki",
+        obj1: "Inganta hanyoyin sadarwar gaggawa tsakanin hukumomin jiha da talakawa.",
+        obj2: "Samar da ingantattun lambobin gaggawa don magance labaran bogi.",
+        obj3: "Habaka fahimtar al'umma kan matakan kariya da tsaro na gida.",
+        obj4: "Karfafa gwiwar al'umma wajen ba da gudunmawa da rahotannin unguwa.",
+        obj5: "Ciyar da aiwatar da Burin SDG 16 na Majalisar Dinkin Duniya gaba a matakin jiha.",
+        ackTitle: "Godiya ta Musamman ga Hukuma",
+        ackBody: "An samar da wannan dandalin ne a matsayin babban aikin kammala karatu lokacin Shirin Horar da Dalibai na SIWES a Hukumar Bunkasa Fasahar Sadarwa ta Jihar Zamfara (ZITDA). A karkashin kulawa da jagorancin kwararrun masana na ZITDA, an tsara dandalin don cike gurbi a hanyoyin sadarwar tsaro da lafiya a Jihar Zamfara.",
+        devTitle: "Bayanan Injiniya (SIWES)",
+        devName: "Ismael Bukhary Dankoli",
+        devRole: "Dalibin Kimiyyar Kwamfuta (SIWES)",
+        devInstitution: "Hukumar Bunkasa Fasahar Sadarwa ta Jihar Zamfara (ZITDA)",
+        devDepartment: "Sashen Kimiyyar Kwamfuta",
+        devContactSlogan: "Hadu mu tattauna ko hada gwiwa don bunkasa wannan shiri.",
+        contactTitle: "Suntuntube Mu",
+        contactSubtitle: "Domin karin bayani dangane da wannan aiki na SIWES, bunkasa shi, ko duba tsarin fasahar sa.",
+        contactAddress: "Wuri",
+        contactEmail: "Imel",
+        contactHours: "Lokutan Aiki",
+        officeAddress: "Babban Ofishin ZITDA, JB Yakubu Street, Gusau, Jihar Zamfara, Najeriya",
+        officeEmail: "safealert@zitda.gov.ng",
+        officeHours: "Litinin - Jumma'a: 08:00 na safe zuwa 04:00 na yamma",
+        mapTitle: "Taswirar Hedikwatar Gaggawa (Gusau)",
+        mapSubtitle: "Kimanin wuraren da babban ofisoshin guda 11 na agajin gaggawa da tsaro suke a Gusau.",
+        mapRecenter: "Koma Tsakiyar Gusau",
+        mapSelectPrompt: "Zabi kowane alama a taswira don nuna cikakken bayanan ofishin.",
+        mapCategorySecurity: "Ofishin Hedikwatar Tsaro",
+        mapCategoryDisaster: "Ofishin Gobara / Agaji",
+        mapCategoryMedical: "Wurin Agajin Lafiya",
+        footDev: "Ismael Bukhary Dankoli ya inganta",
+        footSiwes: "Shirin Horar da Dalibai na ZITDA SIWES",
+        footSdg: "Tallafawa Burin SDG 16 (Zaman Lafiya & Adalci)",
+        footCopy: "© 2026 SafeAlert Portal. Hakki na Mallaka."
+      }
+    };
+
+    // System Verification Database (Exact same 11 agencies)
+    const agenciesData = [
+      {
+        id: "npf-zamfara",
+        nameEn: "Nigeria Police Force (Zamfara Command)",
+        nameHa: "Rundunar 'Yan Sandan Najeriya (Rundunar Zamfara)",
+        category: "Security",
+        phones: ["08035891350", "08106583120"],
+        email: "presszamfara@gmail.com",
+        addressEn: "State Command Headquarters, JB Yakubu Street, Gusau, Zamfara State",
+        addressHa: "Babban Ofishin Runduna, JB Yakubu Street, Gusau, Jihar Zamfara",
+        website: "https://www.npf.gov.ng",
+        hoursEn: "24/7 Emergency Response",
+        hoursHa: "Kullum Awanni 24 (A Shirye)",
+        badgeColor: "bg-blue-600",
+        coordinates: [12.1685, 6.6620]
+      },
+      {
+        id: "nscdc-zamfara",
+        nameEn: "Nigeria Security and Civil Defence Corps (NSCDC)",
+        nameHa: "Hukumar Tsaro da Kariya ta Farar Hula (NSCDC Zamfara)",
+        category: "Security",
+        phones: ["08035172429"],
+        email: "info@nscdc.gov.ng",
+        addressEn: "NSCDC State Command Headquarters, Bye-Pass Road, Gusau, Zamfara State",
+        addressHa: "Babban Ofishin NSCDC, Bye-Pass Road, Gusau, Jihar Zamfara",
+        website: "https://www.nscdc.gov.ng",
+        hoursEn: "24/7 Emergency Patrol",
+        hoursHa: "Kullum Awanni 24 na Gaggawa",
+        badgeColor: "bg-slate-700",
+        coordinates: [12.1550, 6.6740]
+      },
+      {
+        id: "zasema",
+        nameEn: "Zamfara State Emergency Management Agency (ZASEMA)",
+        nameHa: "Hukumar Ba da Agajin Gaggawa ta Jihar Zamfara (ZASEMA)",
+        category: "Disaster",
+        phones: ["08036974776", "08069555193"],
+        email: "info@zasema.zm.gov.ng",
+        addressEn: "ZASEMA Headquarters, Canteen Area, Gusau, Zamfara State",
+        addressHa: "Babban Ofishin ZASEMA, Canteen Area, Gusau, Jihar Zamfara",
+        website: "https://zamfara.gov.ng",
+        hoursEn: "24/7 Disaster Response",
+        hoursHa: "Kullum Awanni 24 na Agaji",
+        badgeColor: "bg-emerald-600",
+        coordinates: [12.1605, 6.6610]
+      },
+      {
+        id: "nema-northwest",
+        nameEn: "National Emergency Management Agency (NEMA)",
+        nameHa: "Hukumar Ba da Agajin Gaggawa ta Ƙasa (NEMA)",
+        category: "Disaster",
+        phones: ["08032003555", "112"],
+        email: "info@nema.gov.ng",
+        addressEn: "NEMA Northwest Zonal Operations Office (Serving Zamfara State)",
+        addressHa: "Ofishin NEMA na Shiyyar Arewa Maso Yamma (Mai Kula da Zamfara)",
+        website: "https://nema.gov.ng",
+        hoursEn: "24/7 Disaster Management",
+        hoursHa: "Kullum Awanni 24 (Gudanar da Agaji)",
+        badgeColor: "bg-amber-600",
+        coordinates: [12.1720, 6.6450]
+      },
+      {
+        id: "frsc-zamfara",
+        nameEn: "Federal Road Safety Corps (Zamfara RS10.2)",
+        nameHa: "Hukumar Kula da Tsaron Hanyoyi ta Ƙasa (FRSC Zamfara)",
+        category: "Disaster",
+        phones: ["122", "08077691020"],
+        email: "info@frsc.gov.ng",
+        addressEn: "FRSC Sector Command, JB Yakubu Street, Gusau, Zamfara State",
+        addressHa: "Ofishin FRSC na Jihar Zamfara, JB Yakubu Street, Gusau",
+        website: "https://frsc.gov.ng",
+        hoursEn: "24/7 Road Crash Response",
+        hoursHa: "Awanni 24 na Agajin Hatsari",
+        badgeColor: "bg-orange-600",
+        coordinates: [12.1670, 6.6640]
+      },
+      {
+        id: "fedfire-zamfara",
+        nameEn: "Federal Fire Service (Zamfara Command)",
+        nameHa: "Hukumar Kashe Gobara ta Ƙasa (Rundunar Zamfara)",
+        category: "Disaster",
+        phones: ["09062957591", "112"],
+        email: "info@fedfire.gov.ng",
+        addressEn: "Federal Fire Service Command, Secretariat Road, Gusau, Zamfara State",
+        addressHa: "Rundunar Hukumar Gobara, Secretariat Road, Gusau, Jihar Zamfara",
+        website: "https://fedfire.gov.ng",
+        hoursEn: "24/7 Fire & Rescue Dispatch",
+        hoursHa: "Kullum Awanni 24 (Kariyar Gobara)",
+        badgeColor: "bg-red-600",
+        coordinates: [12.1510, 6.6580]
+      },
+      {
+        id: "nigerian-army-zamfara",
+        nameEn: "Nigerian Army (1 Brigade, Gusau)",
+        nameHa: "Rundunar Sojin Ƙasa ta Najeriya (Birged ta 1, Gusau)",
+        category: "Security",
+        phones: ["193", "08000022288"],
+        email: "info@army.mil.ng",
+        addressEn: "1 Brigade Headquarters, Gusau Military Cantonment, Zamfara State",
+        addressHa: "Babban Ofishin Sojoji na Birged ta 1, Barikin Soja, Gusau",
+        website: "https://www.army.mil.ng",
+        hoursEn: "24/7 Military Patrol & Defence",
+        hoursHa: "Kullum Awanni 24 na Tsaro da Kariya",
+        badgeColor: "bg-green-700",
+        coordinates: [12.1820, 6.6850]
+      },
+      {
+        id: "dss-zamfara",
+        nameEn: "Department of State Services (DSS Zamfara)",
+        nameHa: "Hukumar Tsaro ta Farin Kaya (DSS Zamfara)",
+        category: "Security",
+        phones: ["09038283595"],
+        email: "dss@dss.gov.ng",
+        addressEn: "DSS State Command Headquarters, Gusau, Zamfara State",
+        addressHa: "Babban Ofishin DSS, Gusau, Jihar Zamfara",
+        website: "https://dss.gov.ng",
+        hoursEn: "24/7 National Security & Intelligence",
+        hoursHa: "Kullum Awanni 24 na Bayanan Tsaro",
+        badgeColor: "bg-slate-900",
+        coordinates: [12.1480, 6.6690]
+      },
+      {
+        id: "redcross-zamfara",
+        nameEn: "Nigerian Red Cross Society (Zamfara Branch)",
+        nameHa: "Kungiyar Red Cross ta Najeriya (Rundunar Zamfara)",
+        category: "Medical",
+        phones: ["08036230622"],
+        email: "info@redcrossnigeria.org",
+        addressEn: "Red Cross Office, Canteen Area, Gusau, Zamfara State",
+        addressHa: "Ofishin Red Cross, Canteen Area, Gusau, Jihar Zamfara",
+        website: "https://www.redcrossnigeria.org",
+        hoursEn: "08:00 AM - 05:00 PM (Emergency 24/7)",
+        hoursHa: "08:00 Na Safe - 05:00 Na Yamma (Agaji 24/7)",
+        badgeColor: "bg-red-500",
+        coordinates: [12.1595, 6.6595]
+      },
+      {
+        id: "fmc-gusau",
+        nameEn: "Federal Medical Centre Gusau (FMC)",
+        nameHa: "Babban Asibitin Tarayya da ke Gusau (FMC)",
+        category: "Medical",
+        phones: ["08035174315", "08064972983"],
+        email: "info@fmcgusau.gov.ng",
+        addressEn: "FMC Gusau, Zaria Road, Gusau, Zamfara State",
+        addressHa: "FMC Gusau, Zaria Road, Gusau, Jihar Zamfara",
+        website: "https://fmcgusau.gov.ng",
+        hoursEn: "24/7 Accident & Emergency Unit",
+        hoursHa: "Kullum Awanni 24 (Hatsari & Gaggawa)",
+        badgeColor: "bg-teal-600",
+        coordinates: [12.1420, 6.6890]
+      },
+      {
+        id: "moh-zamfara",
+        nameEn: "Zamfara State Ministry of Health",
+        nameHa: "Ma'aikatar Lafiya ta Jihar Zamfara",
+        category: "Medical",
+        phones: ["08035983277", "08169408660"],
+        email: "info@moh.zm.gov.ng",
+        addressEn: "State Secretariat Complex, Block B, Gusau, Zamfara State",
+        addressHa: "Sakatariyar Jiha, Sashe na B, Gusau, Jihar Zamfara",
+        website: "https://zamfara.gov.ng",
+        hoursEn: "Monday - Friday: 08:00 AM - 04:00 PM",
+        hoursHa: "Litinin - Jumma'a: 08:00 Safe - 04:00 Yamma",
+        badgeColor: "bg-cyan-600",
+        coordinates: [12.1530, 6.6565]
+      }
+    ];
+
+    // Global states
+    let currentLang = 'en';
+    let activeFilter = 'All';
+    let map = null;
+    let mapMarkers = {};
+
+    // Initialize application
+    window.addEventListener('DOMContentLoaded', () => {
+      updateSystemDateTime();
+      setInterval(updateSystemDateTime, 1000);
+      
+      // Render Initial State
+      renderAgencies();
+      initLeafletMap();
+      renderMapSidebar();
+      applyLanguage(currentLang);
+    });
+
+    // Real-time UTC Timestamp Clock for Gusau simulation
+    function updateSystemDateTime() {
+      const options = { 
+        timeZone: 'Africa/Lagos', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: false 
+      };
+      const formatter = new Intl.DateTimeFormat('en-US', options);
+      const lagosTime = formatter.format(new Date());
+      document.getElementById('live-time').innerText = `GUSAU (WAT): ${lagosTime}`;
+    }
+
+    // Toggle Language
+    function toggleLanguage() {
+      currentLang = (currentLang === 'en') ? 'ha' : 'en';
+      document.getElementById('lang-label').innerText = (currentLang === 'en') ? 'Hausa' : 'English';
+      applyLanguage(currentLang);
+      renderAgencies();
+      renderMapSidebar();
+    }
+
+    // Toggle Mobile Menu Navigation
+    function toggleMobileMenu() {
+      const drawer = document.getElementById('mobile-menu');
+      drawer.classList.toggle('hidden');
+    }
+
+    // Apply translations directly to translation keys
+    function applyLanguage(lang) {
+      const dict = translations[lang];
+      document.documentElement.lang = lang;
+      
+      // Update element tags
+      const elementsWithKeys = document.querySelectorAll('[data-key]');
+      elementsWithKeys.forEach(el => {
+        const key = el.getAttribute('data-key');
+        if (dict[key]) {
+          el.innerText = dict[key];
+        }
+      });
+
+      // Update placeholders
+      const placeholders = document.querySelectorAll('[data-placeholder]');
+      placeholders.forEach(el => {
+        const key = el.getAttribute('data-placeholder');
+        if (dict[key]) {
+          el.placeholder = dict[key];
+        }
+      });
+    }
+
+    // Filter by Category Selection
+    function filterCategory(category) {
+      activeFilter = category;
+      const categories = ['All', 'Security', 'Disaster', 'Medical'];
+      
+      categories.forEach(cat => {
+        const btn = document.getElementById(`tab-${cat}`);
+        if (cat === category) {
+          btn.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-emerald-600 text-white shadow-md shadow-emerald-100 cursor-pointer";
+        } else {
+          btn.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer";
+        }
+      });
+
+      renderAgencies();
+    }
+
+    // Search query monitoring
+    function handleSearch() {
+      renderAgencies();
+    }
+
+    // Render Agency Cards dynamically with Search & Filters
+    function renderAgencies() {
+      const grid = document.getElementById('agencies-grid');
+      const searchVal = document.getElementById('search-input').value.toLowerCase();
+      const dict = translations[currentLang];
+      
+      let filtered = agenciesData.filter(agency => {
+        const matchesCategory = (activeFilter === 'All' || agency.category === activeFilter);
+        
+        const name = (currentLang === 'en' ? agency.nameEn : agency.nameHa).toLowerCase();
+        const address = (currentLang === 'en' ? agency.addressEn : agency.addressHa).toLowerCase();
+        const phones = agency.phones.join(' ').toLowerCase();
+        const category = agency.category.toLowerCase();
+        
+        const matchesSearch = name.includes(searchVal) || 
+                              address.includes(searchVal) || 
+                              phones.includes(searchVal) || 
+                              category.includes(searchVal);
+                              
+        return matchesCategory && matchesSearch;
+      });
+
+      grid.innerHTML = "";
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-400 font-medium text-sm">
+            ${currentLang === 'en' ? 'No agencies match your search criteria.' : 'Babu jami’ar da ta dace da bincikenku.'}
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(agency => {
+        const name = currentLang === 'en' ? agency.nameEn : agency.nameHa;
+        const address = currentLang === 'en' ? agency.addressEn : agency.addressHa;
+        const hours = currentLang === 'en' ? agency.hoursEn : agency.hoursHa;
+        const mainPhone = agency.phones[0];
+
+        const card = document.createElement('div');
+        card.className = "flex flex-col bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition duration-300";
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div class="flex items-center gap-2">
+              <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-50 border border-slate-100 text-slate-800">
+                <svg class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0110 21a3.745 3.745 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.745 3.745 0 013.296-1.043A3.746 3.746 0 0113 3a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                </svg>
+              </div>
+              <button onclick="handleViewOnMap('${agency.id}')" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 transition active:scale-95 cursor-pointer">
+                <svg class="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>${currentLang === 'en' ? 'Map' : 'Taswira'}</span>
+              </button>
+            </div>
+            <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase text-white ${agency.badgeColor}">
+              ${currentLang === 'en' ? agency.category : (agency.category === 'Security' ? 'Tsaro' : agency.category === 'Disaster' ? 'Agaji' : 'Lafiya')}
+            </span>
+          </div>
+
+          <div class="flex-grow space-y-2 mb-6">
+            <h3 class="text-sm font-black text-slate-900 leading-tight">${name}</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">${address}</p>
+            
+            <div class="flex items-center gap-1.5 text-xs text-slate-500 pt-1">
+              <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>${hours}</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <a href="tel:${mainPhone}" class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-100 transition duration-200 active:scale-95 text-center">
+              <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.802-5.144-4.122-6.945-6.945l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.11-1.008H4.5a2.25 2.25 0 00-2.25 2.25v1.352z" />
+              </svg>
+              ${dict.btnCall}
+            </a>
+            <a href="${agency.website}" target="_blank" class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition duration-200 active:scale-95 text-center">
+              <svg class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+              ${dict.btnWebsite}
+            </a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Leaflet map creation helper & markers config
+    function initLeafletMap() {
+      // Gusau coordinates center
+      const gusauCenter = [12.1628, 6.6614];
+      map = L.map('leaflet-map', {
+        scrollWheelZoom: false,
+        attributionControl: true
+      }).setView(gusauCenter, 13.5);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // Create Markers
+      agenciesData.forEach(agency => {
+        let colorClass = "bg-blue-600 border-blue-500 text-blue-100";
+        if (agency.category === "Disaster") colorClass = "bg-orange-600 border-orange-500 text-orange-100";
+        if (agency.category === "Medical") colorClass = "bg-teal-600 border-teal-500 text-teal-100";
+
+        const customIcon = L.divIcon({
+          html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg ${colorClass}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 .76-.97l8-2a1 1 0 0 1 .48 0l8 2A1 1 0 0 1 20 6z"/></svg></div>`,
+          className: "custom-leaflet-marker",
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -32]
+        });
+
+        const popupContent = `
+          <div class="p-2 max-w-[240px] font-sans">
+            <span class="inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-white ${
+              agency.category === 'Security' ? 'bg-blue-600' : (agency.category === 'Disaster' ? 'bg-orange-600' : 'bg-teal-600')
+            } mb-1">
+              ${agency.category}
+            </span>
+            <h4 class="text-xs font-extrabold text-slate-900 leading-tight mb-1">${currentLang === 'en' ? agency.nameEn : agency.nameHa}</h4>
+            <p class="text-[10px] text-slate-500 leading-relaxed mb-2">${currentLang === 'en' ? agency.addressEn : agency.addressHa}</p>
+            <div class="space-y-1 pt-1.5 border-t border-slate-100">
+              <span class="text-[8px] text-slate-400 font-extrabold uppercase block tracking-wider">${currentLang === 'en' ? 'Hotlines' : 'Lambobin Waya'}</span>
+              ${agency.phones.map(p => `<a href="tel:${p}" class="text-[11px] font-black text-emerald-600 hover:underline block font-mono">${p}</a>`).join('')}
+            </div>
+          </div>
+        `;
+
+        const marker = L.marker(agency.coordinates, { icon: customIcon })
+          .bindPopup(popupContent)
+          .addTo(map);
+
+        mapMarkers[agency.id] = marker;
+      });
+    }
+
+    // Render Map Sidebar Selector Buttons
+    function renderMapSidebar() {
+      const sidebarContainer = document.getElementById('map-sidebar-list');
+      sidebarContainer.innerHTML = "";
+
+      agenciesData.forEach(agency => {
+        const name = currentLang === 'en' ? agency.nameEn : agency.nameHa;
+        const address = currentLang === 'en' ? agency.addressEn : agency.addressHa;
+        const isSecurity = agency.category === 'Security';
+        const isDisaster = agency.category === 'Disaster';
+        
+        let markerDotColor = 'bg-teal-500';
+        if (isSecurity) markerDotColor = 'bg-blue-500';
+        if (isDisaster) markerDotColor = 'bg-orange-500';
+
+        const btn = document.createElement('button');
+        btn.id = `map-side-${agency.id}`;
+        btn.className = "w-full text-left p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition flex flex-col gap-1 cursor-pointer";
+        btn.onclick = () => focusMapOnAgency(agency.id);
+        btn.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-extrabold truncate">${name}</span>
+            <span class="shrink-0 w-2 h-2 rounded-full ${markerDotColor}"></span>
+          </div>
+          <span class="text-[10px] text-slate-500 truncate">${address}</span>
+        `;
+
+        sidebarContainer.appendChild(btn);
+      });
+    }
+
+    // Scroll and focus Leaflet view on click
+    function handleViewOnMap(id) {
+      focusMapOnAgency(id);
+      const target = document.getElementById("map-section");
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // Center and open Leaflet popup
+    function focusMapOnAgency(id) {
+      const agency = agenciesData.find(a => a.id === id);
+      if (!agency) return;
+
+      // Update sidebar buttons active style
+      agenciesData.forEach(a => {
+        const sideBtn = document.getElementById(`map-side-${a.id}`);
+        if (sideBtn) {
+          if (a.id === id) {
+            sideBtn.className = "w-full text-left p-3 rounded-xl border border-slate-900 bg-slate-900 text-white shadow-md flex flex-col gap-1 cursor-pointer";
+          } else {
+            sideBtn.className = "w-full text-left p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition flex flex-col gap-1 cursor-pointer";
+          }
+        }
+      });
+
+      // Update map view
+      if (map) {
+        map.setView(agency.coordinates, 15.5);
+        if (mapMarkers[id]) {
+          mapMarkers[id].openPopup();
+        }
+      }
+    }
+
+    // Recenter map back to initial state
+    function recenterMap() {
+      const gusauCenter = [12.1628, 6.6614];
+      if (map) {
+        map.setView(gusauCenter, 13.5);
+      }
+      
+      // Clear sidebar highlights
+      agenciesData.forEach(a => {
+        const sideBtn = document.getElementById(`map-side-${a.id}`);
+        if (sideBtn) {
+          sideBtn.className = "w-full text-left p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition flex flex-col gap-1 cursor-pointer";
+        }
+      });
+    }
+
+    // ==========================================
+    // SECURE FORM VALIDATION & SUCCESS HANDLERS
+    // ==========================================
+    function submitIncident(event) {
+      event.preventDefault();
+
+      // Inputs
+      const nameInp = document.getElementById('reporter-name');
+      const phoneInp = document.getElementById('reporter-phone');
+      const typeInp = document.getElementById('incident-type');
+      const locInp = document.getElementById('incident-location');
+      const dateInp = document.getElementById('incident-date');
+      const descInp = document.getElementById('incident-desc');
+
+      // Errors Displays
+      const errName = document.getElementById('err-name');
+      const errPhone = document.getElementById('err-phone');
+      const errType = document.getElementById('err-type');
+      const errLoc = document.getElementById('err-loc');
+      const errDate = document.getElementById('err-date');
+      const errDesc = document.getElementById('err-desc');
+
+      let isValid = true;
+      const dict = translations[currentLang];
+
+      // Clean displays
+      const allErrs = [errName, errPhone, errType, errLoc, errDate, errDesc];
+      allErrs.forEach(err => {
+        if (err) {
+          err.innerText = "";
+          err.classList.add('hidden');
+        }
+      });
+
+      // 1. Name Check
+      if (!nameInp.value.trim()) {
+        errName.innerText = dict.valName;
+        errName.classList.remove('hidden');
+        isValid = false;
+      }
+
+      // 2. Phone Check (Valid Nigerian mobile check)
+      const phoneVal = phoneInp.value.trim().replace(/\s+/g, '');
+      const nigeriaPhoneRegex = /^(?:\+234|234|0)?[789][01]\d{8}$/;
+      if (!phoneVal) {
+        errPhone.innerText = dict.valPhone;
+        errPhone.classList.remove('hidden');
+        isValid = false;
+      } else if (!nigeriaPhoneRegex.test(phoneVal)) {
+        errPhone.innerText = currentLang === 'en' 
+          ? "Please provide a valid Nigerian 11-digit mobile number." 
+          : "Da fatan za a shigar da ingantacciyar lambar wayar Najeriya mai lambobi 11.";
+        errPhone.classList.remove('hidden');
+        isValid = false;
+      }
+
+      // 3. Classification Check
+      if (!typeInp.value) {
+        errType.innerText = dict.valType;
+        errType.classList.remove('hidden');
+        isValid = false;
+      }
+
+      // 4. Location Check
+      if (!locInp.value.trim()) {
+        const errorLoc = document.getElementById('err-location');
+        errorLoc.innerText = dict.valLocation;
+        errorLoc.classList.remove('hidden');
+        isValid = false;
+      }
+
+      // 5. Date Check
+      if (!dateInp.value) {
+        errDate.innerText = dict.valDate;
+        errDate.classList.remove('hidden');
+        isValid = false;
+      }
+
+      // 6. Description Check
+      if (!descInp.value.trim()) {
+        errDesc.innerText = dict.valDesc;
+        errDesc.classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!isValid) return;
+
+      // SUCCESS: Generate academic SIWES simulation reference ticket
+      const ticketNum = Math.floor(10000 + Math.random() * 90000);
+      const classificationPrefix = typeInp.value.substring(0, 3).toUpperCase();
+      const ticketId = `SA-${classificationPrefix}-${ticketNum}`;
+
+      // Open Modal with Reference ID
+      document.getElementById('ticket-id-display').innerText = ticketId;
+      document.getElementById('success-modal').classList.remove('hidden');
+
+      // Clear Form Fields on complete
+      document.getElementById('incident-form').reset();
+    }
+
+    // Close Reference Modal
+    function closeModal() {
+      document.getElementById('success-modal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

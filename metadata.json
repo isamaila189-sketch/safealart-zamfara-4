@@ -1,0 +1,6 @@
+{
+  "name": "SafeAlert – Zamfara State Community Safety Portal",
+  "description": "A professional community safety portal for Zamfara State featuring official emergency contacts, incident reporting, safety tips, and multi-language support (English and Hausa).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

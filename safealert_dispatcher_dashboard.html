@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeAlert – Zamfara State Emergency Dispatch & Command Center</title>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <!-- Custom Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbars for Dispatch Log Feeds */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    /* Blinking incident notification rings */
+    @keyframes pulse-red {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .pulse-danger {
+      animation: pulse-red 2s infinite;
+    }
+    /* Grid background effect for Command UI */
+    .command-grid-bg {
+      background-size: 20px 20px;
+      background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-red-600 selection:text-white h-screen flex flex-col overflow-hidden command-grid-bg">
+
+  <!-- ==========================================
+      1. COMMAND CONSOLE TOP NAVIGATION
+      ========================================== -->
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-red-600 text-white shadow-md shadow-red-900/40">
+        <!-- SVG Radar / Compass Core Icon -->
+        <svg class="h-5 w-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l-.707.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-base font-extrabold tracking-tight text-white">SafeAlert Command & Dispatch</span>
+          <span class="inline-flex items-center rounded bg-slate-800 border border-slate-700 px-1.5 py-0.5 text-[9px] font-bold text-red-400 font-mono tracking-wide">SECURE DISPATCH MODE</span>
+        </div>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Zamfara Information Technology Development Agency (ZITDA) • SIWES PROJECT</p>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Coordinates Overlay -->
+    <div class="hidden md:flex items-center gap-6 text-right">
+      <div class="space-y-0.5">
+        <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">GUSAU HQ COORDINATES</span>
+        <span class="text-xs font-mono font-bold text-slate-300 block">12.1628° N, 6.6614° E</span>
+      </div>
+      <div class="space-y-0.5">
+        <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">LIVE COMMAND TIME (WAT)</span>
+        <span id="dispatcher-clock" class="text-xs font-mono font-bold text-emerald-400 block">--:--:--</span>
+      </div>
+      <div class="h-8 w-px bg-slate-800"></div>
+      <div class="text-left flex items-center gap-2">
+        <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block animate-ping"></span>
+        <span class="text-xs font-bold text-slate-300">ADMIN: ISMAEL B. DANKOLI</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+      2. MULTI-MODULE DISPATCHER INTERFACE
+      ========================================== -->
+  <main class="flex-grow flex flex-col lg:flex-row overflow-hidden min-h-0">
+    
+    <!-- LEFT PANEL: INCIDENT TICKETS FEED -->
+    <section class="w-full lg:w-[380px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+      
+      <!-- List Header & Stat Toggles -->
+      <div class="p-4 border-b border-slate-800 bg-slate-950/40 flex items-center justify-between shrink-0">
+        <div>
+          <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Emergency Incidents Feed</h2>
+          <span class="text-[10px] font-medium text-slate-500">SIWES Simulation Live Stream</span>
+        </div>
+        <span id="active-incident-badge" class="inline-flex items-center rounded-full bg-red-950 border border-red-800/60 px-2 py-0.5 text-xs font-bold text-red-400 font-mono">
+          3 ACTIVE
+        </span>
+      </div>
+
+      <!-- Quick Action Filter Tags -->
+      <div class="p-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0 text-xs">
+        <button onclick="filterIncidentStatus('All')" id="status-tab-All" class="px-2.5 py-1 rounded bg-slate-800 text-white font-bold cursor-pointer transition">All</button>
+        <button onclick="filterIncidentStatus('Pending')" id="status-tab-Pending" class="px-2.5 py-1 rounded text-slate-400 font-medium hover:text-slate-200 cursor-pointer transition">Pending</button>
+        <button onclick="filterIncidentStatus('Dispatched')" id="status-tab-Dispatched" class="px-2.5 py-1 rounded text-slate-400 font-medium hover:text-slate-200 cursor-pointer transition">Dispatched</button>
+        <button onclick="filterIncidentStatus('Resolved')" id="status-tab-Resolved" class="px-2.5 py-1 rounded text-slate-400 font-medium hover:text-slate-200 cursor-pointer transition">Resolved</button>
+      </div>
+
+      <!-- Incident Cards Feed Container -->
+      <div id="incidents-feed-list" class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+    </section>
+
+    <!-- MIDDLE PANEL: GEO-SPATIAL OPERATIONS CENTER (MAP) -->
+    <section class="flex-grow flex flex-col bg-slate-950 relative min-w-0">
+      
+      <!-- Grid Summary Widgets (Total Counters) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 border-b border-slate-800 bg-slate-900 shrink-0">
+        <div class="p-4 border-r border-slate-800 flex flex-col gap-1">
+          <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Total Received Tickets</span>
+          <span id="stat-total" class="text-xl font-extrabold text-slate-100 font-mono">12 Incidents</span>
+        </div>
+        <div class="p-4 border-r border-slate-800 flex flex-col gap-1">
+          <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Dispatched Agencies</span>
+          <span id="stat-dispatched" class="text-xl font-extrabold text-amber-500 font-mono">3 Units</span>
+        </div>
+        <div class="p-4 border-r border-slate-800 flex flex-col gap-1">
+          <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Avg Response Interval</span>
+          <span class="text-xl font-extrabold text-emerald-400 font-mono">4.2 Minutes</span>
+        </div>
+        <div class="p-4 flex flex-col gap-1">
+          <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">ZITDA Server Link</span>
+          <span class="text-xl font-extrabold text-emerald-400 font-mono">ONLINE</span>
+        </div>
+      </div>
+
+      <!-- Geographic Map Grid -->
+      <div class="flex-grow relative min-h-0">
+        <div id="dispatcher-map" class="h-full w-full z-10"></div>
+        
+        <!-- Live Radio Telemetry Console (Absolute Overlay Bottom) -->
+        <div class="absolute bottom-4 left-4 right-4 z-20 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl backdrop-blur-md max-h-[140px] flex flex-col pointer-events-auto">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2 shrink-0">
+            <span class="text-[10px] font-black text-slate-400 font-mono flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-ping"></span>
+              ZITDA SIWES LIVE TRANSMISSION TERMINAL LOG
+            </span>
+            <button onclick="clearConsoleLog()" class="text-[9px] font-bold text-slate-500 hover:text-red-400 font-mono transition cursor-pointer">CLEAR LOG</button>
+          </div>
+          <!-- Log stream lists -->
+          <div id="console-radio-logs" class="flex-grow overflow-y-auto font-mono text-[10.5px] text-emerald-400 space-y-1.5 custom-scrollbar">
+            <!-- Simulated logs popped dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: INCIDENT DETAIL VIEWER & DISPATCH TOOL -->
+    <section class="w-full lg:w-[360px] bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+      
+      <!-- Section Header -->
+      <div class="p-4 border-b border-slate-800 bg-slate-950/40 shrink-0">
+        <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Incident Action Center</h2>
+        <span class="text-[10px] font-medium text-slate-500">Real-time Command Dispatch Tool</span>
+      </div>
+
+      <!-- Action Panel Content -->
+      <div id="action-center-content" class="p-5 space-y-6 flex-grow flex flex-col justify-between">
+        <!-- Rendered dynamically depending on selected incident card -->
+        <div class="flex flex-col items-center justify-center text-center h-full text-slate-500 py-12">
+          <svg class="h-10 w-10 text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          </svg>
+          <span class="text-xs font-bold uppercase tracking-wider">No Incident Selected</span>
+          <p class="text-[10px] mt-1 text-slate-600 max-w-[200px]">Select any active emergency incident ticket on the left panel to execute dispatcher coordinates.</p>
+        </div>
+      </div>
+
+      <!-- State Command Duty Roster (Mini Widget) -->
+      <div class="p-4 bg-slate-950 border-t border-slate-800 shrink-0 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Agency Readiness Roster</h3>
+          <span class="text-[9px] font-mono font-bold text-emerald-400">11 ONLINE</span>
+        </div>
+
+        <div id="agency-ready-list" class="space-y-1.5 max-h-[140px] overflow-y-auto custom-scrollbar pr-1">
+          <!-- Populated by JavaScript with toggle states -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Leaflet Map Script JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- ==========================================
+      3. DISPATCHER CONSOLE BUSINESS LOGIC
+      ========================================== -->
+  <script>
+    // System database of the 11 verified agencies
+    const agenciesData = [
+      { id: "npf-zamfara", name: "Nigeria Police Force (Zamfara Command)", category: "Security", phones: ["08035891350"], coordinates: [12.1685, 6.6620] },
+      { id: "nscdc-zamfara", name: "Civil Defence Command (NSCDC)", category: "Security", phones: ["08035172429"], coordinates: [12.1550, 6.6740] },
+      { id: "zasema", name: "Zamfara State Emergency Management Agency", category: "Disaster", phones: ["08036974776"], coordinates: [12.1605, 6.6610] },
+      { id: "nema-northwest", name: "National Emergency Management Agency", category: "Disaster", phones: ["08032003555"], coordinates: [12.1720, 6.6450] },
+      { id: "frsc-zamfara", name: "Federal Road Safety Corps RS10.2", category: "Disaster", phones: ["122"], coordinates: [12.1670, 6.6640] },
+      { id: "fedfire-zamfara", name: "Federal Fire Service Zamfara Command", category: "Disaster", phones: ["09062957591"], coordinates: [12.1510, 6.6580] },
+      { id: "nigerian-army-zamfara", name: "Nigerian Army (1 Brigade, Gusau)", category: "Security", phones: ["193"], coordinates: [12.1820, 6.6850] },
+      { id: "dss-zamfara", name: "Department of State Services DSS", category: "Security", phones: ["09038283595"], coordinates: [12.1480, 6.6690] },
+      { id: "redcross-zamfara", name: "Nigerian Red Cross Society Gusau", category: "Medical", phones: ["08036230622"], coordinates: [12.1595, 6.6595] },
+      { id: "fmc-gusau", name: "Federal Medical Centre Gusau FMC", category: "Medical", phones: ["08035174315"], coordinates: [12.1420, 6.6890] },
+      { id: "moh-zamfara", name: "Zamfara State Ministry of Health", category: "Medical", phones: ["08035983277"], coordinates: [12.1530, 6.6565] }
+    ];
+
+    // Mock Live Incident Tickets database
+    let incidents = [
+      {
+        id: "SA-SEC-84201",
+        reporterName: "Danjuma Ibrahim",
+        reporterPhone: "08035821345",
+        classification: "Security",
+        description: "Armed robbery confrontation in progress along Kaura Namoda Highway Bypass, requesting emergency dispatch support immediately.",
+        location: "Kaura Namoda Highway, Gusau",
+        date: "2026-07-05T12:30",
+        coordinates: [12.1760, 6.6690],
+        status: "Pending", // Pending, Dispatched, Resolved
+        recommendedAgency: "npf-zamfara",
+        dispatchTime: null,
+        resolutionLog: null
+      },
+      {
+        id: "SA-FIR-92348",
+        reporterName: "Safiya Bello",
+        reporterPhone: "08169408661",
+        classification: "Fire",
+        description: "Commercial shop block fire breakout around Canteen Area, Gusau. Thick smoke visible. Neighbors attempting primary bucket extinguisher.",
+        location: "Canteen Area Market, Gusau",
+        date: "2026-07-05T12:35",
+        coordinates: [12.1610, 6.6570],
+        status: "Dispatched",
+        recommendedAgency: "fedfire-zamfara",
+        dispatchTime: "12:38 WAT",
+        resolutionLog: null
+      },
+      {
+        id: "SA-MED-49122",
+        reporterName: "Dr. Aliyu Jangebe",
+        reporterPhone: "08064972983",
+        classification: "Road Accident",
+        description: "Head-on collision of two commercial motorcycles. Multiple casualties with severe fractures at FMC Junction, Zaria Road.",
+        location: "Zaria Road Intersection, Gusau",
+        date: "2026-07-05T12:20",
+        coordinates: [12.1440, 6.6830],
+        status: "Pending",
+        recommendedAgency: "frsc-zamfara",
+        dispatchTime: null,
+        resolutionLog: null
+      },
+      {
+        id: "SA-FLD-28149",
+        reporterName: "Aminu Gusau",
+        reporterPhone: "09062957591",
+        classification: "Flood",
+        description: "Localized heavy rainy flash floods threatening residential compound structures in Maru District near Gusau Border.",
+        location: "Maru Road Outskirts, Gusau Area",
+        date: "2026-07-05T11:45",
+        coordinates: [12.1520, 6.6430],
+        status: "Resolved",
+        recommendedAgency: "zasema",
+        dispatchTime: "11:50 WAT",
+        resolutionLog: "ZASEMA water drainage evacuation pumps deployed. Residential houses secured with no casualties. Reference ticket closed."
+      }
+    ];
+
+    // Readyness Roster Data
+    let agencyReadiness = {
+      "npf-zamfara": "ACTIVE",
+      "nscdc-zamfara": "ACTIVE",
+      "zasema": "STANDBY",
+      "nema-northwest": "STANDBY",
+      "frsc-zamfara": "ACTIVE",
+      "fedfire-zamfara": "ACTIVE",
+      "nigerian-army-zamfara": "ACTIVE",
+      "dss-zamfara": "ACTIVE",
+      "redcross-zamfara": "STANDBY",
+      "fmc-gusau": "ACTIVE",
+      "moh-zamfara": "STANDBY"
+    };
+
+    // Global dashboard states
+    let activeIncidentStatusFilter = "All";
+    let selectedIncidentId = null;
+    let dispatcherMap = null;
+    let mapIncidentMarkers = {};
+    let mapAgencyMarkers = {};
+
+    // Initialize Page Core
+    window.addEventListener('DOMContentLoaded', () => {
+      // Clock
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // Map Setup
+      initDispatcherMap();
+
+      // Renders
+      renderIncidentsList();
+      renderAgencyRoster();
+
+      // Mock Logs Setup
+      pushConsoleLog("ZITDA SIWES Encryption Portal initiated successfully.", "SYSTEM");
+      pushConsoleLog("NPF, FRSC and Fire Service radio signals synchronized.", "SYSTEM");
+      pushConsoleLog("Awaiting emergency telemetry transmissions...", "INFO");
+    });
+
+    // Clock
+    function updateClock() {
+      const options = { 
+        timeZone: 'Africa/Lagos', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: false 
+      };
+      const formatter = new Intl.DateTimeFormat('en-US', options);
+      document.getElementById('dispatcher-clock').innerText = formatter.format(new Date());
+    }
+
+    // Initialize Map with both static agency markers AND dynamic blinking alert markers
+    function initDispatcherMap() {
+      const gusauCenter = [12.1628, 6.6614];
+      dispatcherMap = L.map('dispatcher-map', {
+        scrollWheelZoom: false,
+        attributionControl: true
+      }).setView(gusauCenter, 13.5);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(dispatcherMap);
+
+      // Add static agencies as grey reference shields
+      agenciesData.forEach(agency => {
+        const agencyIcon = L.divIcon({
+          html: `<div class="flex items-center justify-center w-6 h-6 rounded-lg bg-slate-800/80 border border-slate-600 text-slate-300 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 .76-.97l8-2a1 1 0 0 1 .48 0l8 2A1 1 0 0 1 20 6z"/></svg></div>`,
+          className: "agency-map-icon",
+          iconSize: [24, 24]
+        });
+
+        const agencyMarker = L.marker(agency.coordinates, { icon: agencyIcon })
+          .bindPopup(`<span class="font-mono text-[10px] font-black text-slate-900">${agency.name}</span>`)
+          .addTo(dispatcherMap);
+
+        mapAgencyMarkers[agency.id] = agencyMarker;
+      });
+
+      // Synchronize dynamic incident markers on map
+      updateIncidentMarkersOnMap();
+    }
+
+    // Refresh Incident Pins on map
+    function updateIncidentMarkersOnMap() {
+      // Clear existing incident markers first
+      for (let id in mapIncidentMarkers) {
+        dispatcherMap.removeLayer(mapIncidentMarkers[id]);
+      }
+      mapIncidentMarkers = {};
+
+      // Draw all unresolved ones
+      incidents.forEach(inc => {
+        if (inc.status === "Resolved") return; // Skip resolved ones on core tracking screen
+
+        let markerClass = inc.status === "Pending" ? "bg-red-600 border-red-400" : "bg-amber-500 border-amber-300";
+        let glowClass = inc.status === "Pending" ? "pulse-danger" : "";
+
+        const divHtml = `
+          <div class="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-slate-950 text-white shadow-xl ${markerClass} ${glowClass}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+        `;
+
+        const incIcon = L.divIcon({
+          html: divHtml,
+          className: "incident-leaflet-marker",
+          iconSize: [32, 32],
+          iconAnchor: [16, 32]
+        });
+
+        const popupText = `
+          <div class="p-2 font-mono text-[10px] text-slate-900 max-w-[200px]">
+            <span class="font-black text-red-600 block">[LIVE TELEMETRY ALERT]</span>
+            <span class="block mt-1">Ticket: <strong>${inc.id}</strong></span>
+            <span class="block text-slate-500 truncate">LGA: ${inc.location}</span>
+            <span class="block text-[9px] text-slate-400">Status: <span class="font-bold text-red-600 uppercase">${inc.status}</span></span>
+          </div>
+        `;
+
+        const incMarker = L.marker(inc.coordinates, { icon: incIcon })
+          .bindPopup(popupText)
+          .addTo(dispatcherMap);
+
+        // Clicking a pin activates sidebar card select
+        incMarker.on('click', () => {
+          selectIncident(inc.id);
+        });
+
+        mapIncidentMarkers[inc.id] = incMarker;
+      });
+    }
+
+    // Handle Incident List Rendering with Filters
+    function renderIncidentsList() {
+      const listContainer = document.getElementById('incidents-feed-list');
+      listContainer.innerHTML = "";
+
+      let filtered = incidents.filter(inc => {
+        if (activeIncidentStatusFilter === 'All') return true;
+        return inc.status === activeIncidentStatusFilter;
+      });
+
+      // Update counters
+      const activeCount = incidents.filter(i => i.status !== 'Resolved').length;
+      document.getElementById('active-incident-badge').innerText = `${activeCount} ACTIVE`;
+      document.getElementById('stat-total').innerText = `${incidents.length} Tickets`;
+      document.getElementById('stat-dispatched').innerText = `${incidents.filter(i => i.status === 'Dispatched').length} Units`;
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `
+          <div class="py-12 text-center text-slate-600 text-xs font-semibold">
+            No incidents found for this state.
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(inc => {
+        const isSelected = inc.id === selectedIncidentId;
+        const borderClass = isSelected ? "border-emerald-500 bg-slate-800" : "border-slate-800 bg-slate-950/50 hover:bg-slate-900/40";
+        
+        let statusBadge = "";
+        if (inc.status === "Pending") {
+          statusBadge = `<span class="inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>`;
+        } else if (inc.status === "Dispatched") {
+          statusBadge = `<span class="inline-flex h-2 w-2 rounded-full bg-amber-500"></span>`;
+        } else {
+          statusBadge = `<span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-2xl border ${borderClass} cursor-pointer transition duration-200 select-none`;
+        card.onclick = () => selectIncident(inc.id);
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="text-[10px] font-bold text-slate-400 font-mono">${inc.id}</span>
+            <div class="flex items-center gap-1.5">
+              ${statusBadge}
+              <span class="text-[9px] font-mono tracking-wider font-extrabold uppercase ${
+                inc.status === 'Pending' ? 'text-red-500' : (inc.status === 'Dispatched' ? 'text-amber-500' : 'text-emerald-500')
+              }">${inc.status}</span>
+            </div>
+          </div>
+
+          <h3 class="text-xs font-extrabold text-slate-100 leading-tight mb-1 truncate">${inc.classification} Breach</h3>
+          <p class="text-[11px] text-slate-400 leading-snug line-clamp-2">${inc.description}</p>
+          
+          <div class="flex items-center justify-between text-[10px] text-slate-500 pt-3 border-t border-slate-800/60 mt-3 font-mono">
+            <span>LGA: ${inc.location.split(',')[0]}</span>
+            <span>${inc.date.split('T')[1] || "Just Now"}</span>
+          </div>
+        `;
+
+        listContainer.appendChild(card);
+      });
+    }
+
+    // Set Filter state and re-render
+    function filterIncidentStatus(status) {
+      activeIncidentStatusFilter = status;
+      const tabs = ['All', 'Pending', 'Dispatched', 'Resolved'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`status-tab-${t}`);
+        if (t === status) {
+          btn.className = "px-2.5 py-1 rounded bg-slate-800 text-white font-bold cursor-pointer transition";
+        } else {
+          btn.className = "px-2.5 py-1 rounded text-slate-400 font-medium hover:text-slate-200 cursor-pointer transition";
+        }
+      });
+      renderIncidentsList();
+    }
+
+    // Select and focus on specific Incident ticket
+    function selectIncident(id) {
+      selectedIncidentId = id;
+      renderIncidentsList();
+      renderActionCenter();
+
+      // Recenter Map on Incident coordinates
+      const inc = incidents.find(i => i.id === id);
+      if (inc && dispatcherMap) {
+        dispatcherMap.setView(inc.coordinates, 15);
+        if (mapIncidentMarkers[id]) {
+          mapIncidentMarkers[id].openPopup();
+        }
+      }
+    }
+
+    // Action center logic for executing dispatch commands
+    function renderActionCenter() {
+      const container = document.getElementById('action-center-content');
+      container.innerHTML = "";
+
+      const inc = incidents.find(i => i.id === selectedIncidentId);
+      if (!inc) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center text-center h-full text-slate-500 py-12">
+            <svg class="h-10 w-10 text-slate-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <span class="text-xs font-bold uppercase tracking-wider">No Incident Selected</span>
+            <p class="text-[10px] mt-1 text-slate-600 max-w-[200px]">Select any active emergency incident ticket on the left panel to execute dispatcher coordinates.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Map matching agency details
+      const recAgency = agenciesData.find(a => a.id === inc.recommendedAgency);
+      const agencyName = recAgency ? recAgency.name : "Nearest Response Command Base";
+
+      let actionButtons = "";
+      if (inc.status === "Pending") {
+        actionButtons = `
+          <div class="space-y-2 pt-4">
+            <button onclick="executeDispatch('${inc.id}')" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer uppercase">
+              <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.64 8.38m6 .12a14.96 14.96 0 01-1.2 5.87m0 0a14.96 14.96 0 01-5.87 1.2" />
+              </svg>
+              Dispatch Recommended Unit
+            </button>
+            <button onclick="resolveIncidentDirectly('${inc.id}')" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 px-4 rounded-xl border border-slate-700 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer uppercase">
+              Direct Resolve & Archive
+            </button>
+          </div>
+        `;
+      } else if (inc.status === "Dispatched") {
+        actionButtons = `
+          <div class="space-y-3 pt-4">
+            <div class="p-3 bg-amber-950/30 border border-amber-900/50 rounded-xl flex items-start gap-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shrink-0 mt-0.5 animate-ping"></span>
+              <p class="text-[10px] text-amber-300 leading-normal">
+                Unit active on deployment at coordinates. Dispatch Time: <strong class="font-mono">${inc.dispatchTime}</strong>. Under constant telemetry tracking.
+              </p>
+            </div>
+            <button onclick="resolveIncidentDirectly('${inc.id}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer uppercase">
+              <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296" />
+              </svg>
+              Mark Incident As Resolved
+            </button>
+          </div>
+        `;
+      } else {
+        actionButtons = `
+          <div class="p-4 bg-emerald-950/20 border border-emerald-900/40 rounded-xl space-y-2 mt-4 text-[10.5px]">
+            <span class="font-bold text-emerald-400 block font-mono uppercase tracking-wider">✔ ARCHIVED RESOLUTION LOGGER</span>
+            <p class="text-slate-300 leading-relaxed font-sans">${inc.resolutionLog}</p>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="space-y-5">
+          <!-- State Indicator Header -->
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <span class="text-[10px] font-bold text-slate-400 font-mono">${inc.id}</span>
+            <span class="text-xs font-black uppercase font-mono tracking-wider ${
+              inc.status === 'Pending' ? 'text-red-500' : (inc.status === 'Dispatched' ? 'text-amber-500' : 'text-emerald-500')
+            }">${inc.status}</span>
+          </div>
+
+          <!-- Metadata Box Grid -->
+          <div class="space-y-3.5">
+            <div>
+              <span class="text-[9px] font-bold text-slate-500 block uppercase tracking-wider font-mono">Reporter Details</span>
+              <span class="text-xs font-black text-slate-200 block mt-0.5">${inc.reporterName}</span>
+              <a href="tel:${inc.reporterPhone}" class="text-[11px] font-bold text-emerald-400 font-mono hover:underline mt-0.5 block">${inc.reporterPhone}</a>
+            </div>
+
+            <div>
+              <span class="text-[9px] font-bold text-slate-500 block uppercase tracking-wider font-mono">Incident Location / LGA</span>
+              <span class="text-xs font-bold text-slate-300 block mt-0.5">${inc.location}</span>
+            </div>
+
+            <div>
+              <span class="text-[9px] font-bold text-slate-500 block uppercase tracking-wider font-mono">Classification</span>
+              <span class="inline-block mt-1 bg-slate-800 px-2.5 py-1 border border-slate-700 rounded-lg text-xs font-bold text-slate-100">
+                ${inc.classification}
+              </span>
+            </div>
+
+            <div>
+              <span class="text-[9px] font-bold text-slate-500 block uppercase tracking-wider font-mono">Reporter Log Detail</span>
+              <p class="text-xs text-slate-300 leading-relaxed bg-slate-950/50 p-3 rounded-xl border border-slate-800 mt-1">${inc.description}</p>
+            </div>
+
+            <div>
+              <span class="text-[9px] font-bold text-slate-500 block uppercase tracking-wider font-mono">Recommended State Responder</span>
+              <span class="text-xs font-extrabold text-slate-300 block mt-1">${agencyName}</span>
+            </div>
+          </div>
+        </div>
+
+        ${actionButtons}
+      `;
+    }
+
+    // Command Dispatch Action triggered
+    function executeDispatch(id) {
+      const inc = incidents.find(i => i.id === id);
+      if (!inc) return;
+
+      const recAgency = agenciesData.find(a => a.id === inc.recommendedAgency);
+      const agencyName = recAgency ? recAgency.name : "Emergency Base Command";
+
+      inc.status = "Dispatched";
+      inc.dispatchTime = `${updateClockReturn()}`;
+
+      // Mark agency as busy/active
+      if (recAgency) {
+        agencyReadiness[recAgency.id] = "BUSY";
+      }
+
+      pushConsoleLog(`Emergency Dispatch authorized for ticket ${id}.`, "DISPATCH");
+      pushConsoleLog(`${agencyName} mobile unit deployed to ${inc.location}.`, "RADIO_OUT");
+
+      // Update Screen
+      renderIncidentsList();
+      renderActionCenter();
+      renderAgencyRoster();
+      updateIncidentMarkersOnMap();
+    }
+
+    // Resolve active incident
+    function resolveIncidentDirectly(id) {
+      const inc = incidents.find(i => i.id === id);
+      if (!inc) return;
+
+      inc.status = "Resolved";
+      
+      const recAgency = agenciesData.find(a => a.id === inc.recommendedAgency);
+      if (recAgency) {
+        agencyReadiness[recAgency.id] = "STANDBY";
+      }
+
+      const resolutions = [
+        "First responder squad arrived, hazard eliminated, scene secured.",
+        "Incident investigated, report verified, safety restored on-site.",
+        "Disaster control and evacuations successfully finalized. No active threat.",
+        "Medical support provided, casualties transported to FMC. Scene cleared."
+      ];
+      inc.resolutionLog = resolutions[Math.floor(Math.random() * resolutions.length)] + " Reference ticket closed.";
+
+      pushConsoleLog(`Incident ticket ${id} has been fully RESOLVED.`, "RESOLVE");
+      pushConsoleLog(`State responders returned to base stand-by.`, "RADIO_IN");
+
+      // Update Screen
+      renderIncidentsList();
+      renderActionCenter();
+      renderAgencyRoster();
+      updateIncidentMarkersOnMap();
+    }
+
+    // Duty roster list render
+    function renderAgencyRoster() {
+      const rosterContainer = document.getElementById('agency-ready-list');
+      rosterContainer.innerHTML = "";
+
+      agenciesData.forEach(agency => {
+        const state = agencyReadiness[agency.id] || "STANDBY";
+        
+        let statusColorClass = "text-emerald-400 bg-emerald-950/40 border-emerald-900/60";
+        if (state === "BUSY") {
+          statusColorClass = "text-amber-500 bg-amber-950/40 border-amber-900/60";
+        } else if (state === "OFFLINE") {
+          statusColorClass = "text-slate-500 bg-slate-950 border-slate-800";
+        }
+
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between p-2 rounded-xl bg-slate-900/40 border border-slate-800/80 text-[10.5px]";
+        div.innerHTML = `
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-1.5 h-1.5 rounded-full ${state === 'ACTIVE' || state === 'STANDBY' ? 'bg-emerald-500' : (state === 'BUSY' ? 'bg-amber-500 animate-pulse' : 'bg-slate-600')} shrink-0"></span>
+            <span class="font-extrabold text-slate-300 truncate" title="${agency.name}">${agency.name.split('(')[0]}</span>
+          </div>
+
+          <button onclick="toggleAgencyRosterState('${agency.id}')" class="px-2 py-0.5 rounded border text-[9px] font-black uppercase cursor-pointer ${statusColorClass}">
+            ${state}
+          </button>
+        `;
+
+        rosterContainer.appendChild(div);
+      });
+    }
+
+    // Toggle Agency State
+    function toggleAgencyRosterState(id) {
+      const current = agencyReadiness[id];
+      let next = "STANDBY";
+      if (current === "STANDBY" || current === "ACTIVE") {
+        next = "BUSY";
+      } else if (current === "BUSY") {
+        next = "OFFLINE";
+      } else {
+        next = "STANDBY";
+      }
+
+      agencyReadiness[id] = next;
+      pushConsoleLog(`Agency ${id.toUpperCase()} readiness state updated to ${next}.`, "SYSTEM");
+      renderAgencyRoster();
+    }
+
+    // Return current formatted WAT time
+    function updateClockReturn() {
+      const options = { 
+        timeZone: 'Africa/Lagos', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: false 
+      };
+      const formatter = new Intl.DateTimeFormat('en-US', options);
+      return formatter.format(new Date()) + " WAT";
+    }
+
+    // Push transmission terminal log helper
+    function pushConsoleLog(text, type = "INFO") {
+      const container = document.getElementById('console-radio-logs');
+      const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+      
+      let badgeColor = "text-emerald-400";
+      if (type === "SYSTEM") badgeColor = "text-blue-400";
+      if (type === "DISPATCH") badgeColor = "text-amber-400";
+      if (type === "RESOLVE") badgeColor = "text-emerald-500";
+      if (type === "RADIO_OUT") badgeColor = "text-red-400 animate-pulse";
+      if (type === "RADIO_IN") badgeColor = "text-teal-400";
+
+      const logLine = document.createElement('div');
+      logLine.className = "flex gap-2 leading-relaxed";
+      logLine.innerHTML = `
+        <span class="text-slate-600 shrink-0 font-bold">[${timeStr}]</span>
+        <span class="${badgeColor} font-black shrink-0">[${type}]</span>
+        <span class="text-slate-300 font-medium">${text}</span>
+      `;
+
+      container.appendChild(logLine);
+      // scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Clear logs helper
+    function clearConsoleLog() {
+      document.getElementById('console-radio-logs').innerHTML = "";
+      pushConsoleLog("Telemetry system logs cleared. Recalibration complete.", "SYSTEM");
+    }
+  </script>
+</body>
+</html>

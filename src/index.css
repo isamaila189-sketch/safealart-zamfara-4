@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom premium styles */
+.hero-gradient {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+}
+
+.card-blur {
+  backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+.dark-card-blur {
+  backdrop-filter: blur(8px);
+  background-color: rgba(15, 23, 42, 0.8);
+}
+
